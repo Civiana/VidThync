@@ -1,5 +1,6 @@
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import { useState } from 'react';
+import "tailwindcss/index.css";
 import './App.css';
 import { evaluate } from 'mathjs';
 
@@ -16,7 +17,9 @@ function Hello() {
   }
 
   return (
+
     <div>
+      <p className='bg-blue-950'>Hi nice people</p>
       <div className='Answer'>
         <input type='text' value={num} readOnly />
       </div>
