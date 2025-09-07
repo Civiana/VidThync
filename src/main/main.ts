@@ -14,6 +14,12 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+// main.js (Electron entry point)
+// import 'src/signalingServer/server.js'; // This starts the server
+const {
+  startSignalingServer,
+} = require('src/signalingServer/serverStarter.js');
+// ...rest of your Electron app setup (BrowserWindow, etc.)
 
 class AppUpdater {
   constructor() {
@@ -75,6 +81,8 @@ const createWindow = async () => {
     height: 728,
     icon: getAssetPath('icon.png'),
     webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
         : path.join(__dirname, '../../.erb/dll/preload.js'),
@@ -124,6 +132,9 @@ app.on('window-all-closed', () => {
   }
 });
 
+ipcMain.on('start-signaling-server', () => {
+  startSignalingServer();
+});
 app
   .whenReady()
   .then(() => {
