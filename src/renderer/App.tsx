@@ -17,6 +17,7 @@ function Hello() {
   // Yjs environment ref so we don't re-create it on every render
   const envRef = useRef<YEnvironment | null>(null);
   const [textValue, setTextValue] = useState('');
+  const [textValue1, setTextValue1] = useState('');
 
   useEffect(() => {
     // 1) Choose a roomName - peers must use the same name to sync
@@ -29,19 +30,29 @@ function Hello() {
     // 3) Create Yjs doc + persistence + webrtc
     envRef.current = createYEnvironment(roomName, signalingUrl);
 
-    // 4) Bind a shared Y.Text to the textarea
-    const ytext = envRef.current.ydoc.getText('shared-text');
+    // 4) Use Y.Map instead of Y.Text to store strings
+    const ymap = envRef.current.ydoc.getMap('shared-data');
 
     // Initialize from current doc content (might come from IndexedDB)
-    setTextValue(ytext.toString());
+    // Using a specific key like 'textContent' to store our string
+    const initialText = ymap.get('textContent') || '';
+    setTextValue(initialText);
 
-    const observer = () => {
-      setTextValue(ytext.toString());
+    const observer = (event: any) => {
+      // Listen for changes to the map
+      if (event.keysChanged.has('textContent')) {
+        const newText = ymap.get('textContent') || '';
+        setTextValue(newText);
+      }
+      if (event.keysChanged.has('textContent1')) {
+        const newText = ymap.get('textContent1') || '';
+        setTextValue1(newText);
+      }
     };
-    ytext.observe(observer);
+    ymap.observe(observer);
 
     return () => {
-      ytext.unobserve(observer);
+      ymap.unobserve(observer);
       if (envRef.current) destroyYEnvironment(envRef.current);
       envRef.current = null;
     };
@@ -50,14 +61,10 @@ function Hello() {
   const onChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const env = envRef.current;
     if (!env) return;
-    const ytext = env.ydoc.getText('shared-text');
 
-    // Naive binding for demo: replace full content each time
-    // For production, bind granular edits using a proper editor binding
-    env.ydoc.transact(() => {
-      ytext.delete(0, ytext.length);
-      ytext.insert(0, e.target.value);
-    });
+    const ymap = env.ydoc.getMap('shared-data');
+
+    ymap.set(e.target.title, e.target.value);
   };
 
   return (
@@ -78,7 +85,15 @@ function Hello() {
         </p>
         <textarea
           className="w-full text-white h-48 p-2 rounded"
+          title="textContent"
           value={textValue}
+          onChange={onChange}
+          placeholder="Type here. Open a second window or machine with the same room to see live sync."
+        />
+        <textarea
+          className="w-full text-white h-48 p-2 rounded"
+          title="textContent1"
+          value={textValue1}
           onChange={onChange}
           placeholder="Type here. Open a second window or machine with the same room to see live sync."
         />
