@@ -9,10 +9,7 @@ const TestConnection = ({ doc }: TestConnectionProps) => {
   const [textValue, setTextValue] = useState('');
   const [textValue1, setTextValue1] = useState('');
   const onChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const env = envRef.current;
-    if (!env) return;
-
-    const ymap = env.ydoc.getMap('shared-data');
+    const ymap = doc.getMap('shared-data');
 
     ymap.set(e.target.title, e.target.value);
   };
