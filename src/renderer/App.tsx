@@ -8,11 +8,12 @@ import {
   destroyYEnvironment,
   type YEnvironment,
 } from 'src/yjsRTC/setup';
+import { useNavigate } from 'react-router';
 
 import {createOrUpdateFolderSyncThing, fetchSyncthingData} from 'src/syncthing/API';
 
 import { Button } from '@/components/ui/button';
-import { error } from 'console';
+import Rooms from 'src/screens/Rooms';import { error } from 'console';
 
 
 
@@ -24,6 +25,7 @@ function Hello() {
   const [data, setData] = useState('')
   const [textValue, setTextValue] = useState('');
   const [textValue1, setTextValue1] = useState('');
+  let navigate = useNavigate();
   const [labels, setLabels] = useState('');
   async function  handleCreateOrUpdate(endpoint: string, labels: string) {
     const response = await createOrUpdateFolderSyncThing(endpoint, labels)
@@ -91,6 +93,14 @@ function Hello() {
       <Button onClick={() => setTimePressed(timePressed + 1)} variant="outline">
         Button
       </Button>
+      <Button
+        onClick={() => {
+          navigate('/room');
+        }}
+        variant="outline"
+      >
+        connect to room
+      </Button>
       <Button onClick={startServer} variant="outline">
         Start signaling server for WebRTC
       </Button>
@@ -136,6 +146,7 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Hello />} />
+        <Route path="/room" element={<Rooms />} />
       </Routes>
     </Router>
   );
