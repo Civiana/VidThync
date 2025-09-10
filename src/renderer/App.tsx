@@ -8,9 +8,10 @@ import {
   destroyYEnvironment,
   type YEnvironment,
 } from 'src/yjsRTC/setup';
+import { useNavigate } from 'react-router';
 
 import { Button } from '@/components/ui/button';
-
+import Rooms from 'src/screens/Rooms';
 function Hello() {
   const [timePressed, setTimePressed] = useState(0);
 
@@ -18,6 +19,7 @@ function Hello() {
   const envRef = useRef<YEnvironment | null>(null);
   const [textValue, setTextValue] = useState('');
   const [textValue1, setTextValue1] = useState('');
+  let navigate = useNavigate();
 
   useEffect(() => {
     // 1) Choose a roomName - peers must use the same name to sync
@@ -75,6 +77,14 @@ function Hello() {
       <Button onClick={() => setTimePressed(timePressed + 1)} variant="outline">
         Button
       </Button>
+      <Button
+        onClick={() => {
+          navigate('/room');
+        }}
+        variant="outline"
+      >
+        connect to room
+      </Button>
       <Button onClick={startServer} variant="outline">
         Start signaling server for WebRTC
       </Button>
@@ -107,6 +117,7 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Hello />} />
+        <Route path="/room" element={<Rooms />} />
       </Routes>
     </Router>
   );
