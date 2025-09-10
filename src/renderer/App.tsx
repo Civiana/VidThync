@@ -9,15 +9,31 @@ import {
   type YEnvironment,
 } from 'src/yjsRTC/setup';
 
+import {createOrUpdateFolderSyncThing, fetchSyncthingData} from 'src/syncthing/API';
+
 import { Button } from '@/components/ui/button';
+import { error } from 'console';
+
+
 
 function Hello() {
   const [timePressed, setTimePressed] = useState(0);
 
   // Yjs environment ref so we don't re-create it on every render
   const envRef = useRef<YEnvironment | null>(null);
+  const [data, setData] = useState('')
   const [textValue, setTextValue] = useState('');
   const [textValue1, setTextValue1] = useState('');
+  const [labels, setLabels] = useState('');
+  async function  handleCreateOrUpdate(endpoint: string, labels: string) {
+    const response = await createOrUpdateFolderSyncThing(endpoint, labels)
+    setData(response)
+  }
+
+  async function handleFetchingData(endpoint: string) {
+    const response = await fetchSyncthingData(endpoint);
+    setData(response)
+  }
 
   useEffect(() => {
     // 1) Choose a roomName - peers must use the same name to sync
@@ -28,7 +44,7 @@ function Hello() {
     const signalingUrl = 'ws://localhost:4444';
 
     // 3) Create Yjs doc + persistence + webrtc
-    envRef.current = createYEnvironment(roomName, signalingUrl);
+    envRef.current = createYEnvironment(roomName, signalingUrl);  
 
     // 4) Use Y.Map instead of Y.Text to store strings
     const ymap = envRef.current.ydoc.getMap('shared-data');
@@ -68,7 +84,7 @@ function Hello() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-black min-w-0 min-h-0 overflow-hidden p-4 gap-3">
+    <div className="flex flex-col h-screen w-screen bg-gray-600 min-w-0 min-h-0 overflow-hidden p-4 gap-3">
       <p className="bg-blue-950 text-white p-2 rounded">
         Hi nice people {timePressed}
       </p>
@@ -78,6 +94,19 @@ function Hello() {
       <Button onClick={startServer} variant="outline">
         Start signaling server for WebRTC
       </Button>
+
+      <Button onClick={async () => {await handleFetchingData("/config/folders"); console.log(data);}} variant='outline'>
+        get folders json
+      </Button>
+        <p className='text-yellow-300'>Folder Name</p>
+        <input className="w-full text-white h-48 p-2 rounded border-width 45px border-amber-500" value={labels} placeholder='Folder Name' type='text' onChange={(event) => {setLabels(event.target.value);}}/>
+
+        <p>{labels}</p>
+      <Button onClick={async () => {await handleCreateOrUpdate("/config/folders", `${labels}`); console.log(data);}} variant='outline'>
+        create new folder
+
+      </Button>
+
 
       <div className="flex flex-col gap-2 mt-4">
         <p className="text-white">
