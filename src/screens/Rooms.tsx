@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { startServer } from 'src/signalingServer/functionStarter.js';
 import Dexie, { Table } from 'dexie';
+import TestConnection from 'src/components/TestConnection';
 import {
   createYEnvironment,
   destroyYEnvironment,
@@ -385,10 +386,9 @@ function Rooms() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-gray-500 text-sm">
-          <p>
-            Make sure the signaling server is running before connecting to a
-            room
-          </p>
+          {envRef.current?.ydoc && (
+            <TestConnection doc={envRef.current?.ydoc ?? null} />
+          )}
         </div>
       </div>
     </div>
