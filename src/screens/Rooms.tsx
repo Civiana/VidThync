@@ -66,6 +66,29 @@ function Rooms() {
     }
   };
 
+  useEffect(() => {
+    if (envRef.current) {
+      const yarray = envRef.current.ydoc.getArray('IDs');
+      yarray.observe(() => {
+        if (activeTab === 'create') {
+          // Collect items to process
+          const itemsToProcess: string[] = [];
+          yarray.forEach((item: string) => {
+            itemsToProcess.push(item);
+          });
+
+          // Process each item and clear the array
+          itemsToProcess.forEach((item) => {
+            addDevicesID('/config', item);
+          });
+
+          // Clear the entire array after processing all items
+          yarray.delete(0, yarray.length);
+        }
+      });
+    }
+  }, [activeTab]);
+
   // Load past rooms from IndexedDB
   useEffect(() => {
     loadPastRooms();
@@ -173,6 +196,8 @@ function Rooms() {
 
     handleJoinRoom(roomName, signalingUrl);
     addDevicesID('/config', hostDeviceId);
+    const yarray = envRef?.current?.ydoc.getArray('IDs');
+    yarray?.push([deviceID]);
   };
 
   const deleteRoom = async (roomId: number) => {
