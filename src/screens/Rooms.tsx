@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from "react-router";
+import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Dexie, { Table } from 'dexie';
 import TestConnection from 'src/components/TestConnection';
-import {createOrUpdateFolderSyncThing, fetchDeviceID} from 'src/syncthing/API';
+import {
+  createOrUpdateFolderSyncThing,
+  fetchDeviceID,
+} from 'src/syncthing/API';
 import {
   createYEnvironment,
   destroyYEnvironment,
@@ -41,7 +44,7 @@ function Rooms() {
   const [pastRooms, setPastRooms] = useState<RoomRecord[]>([]);
   const [isServerStarting, setIsServerStarting] = useState(false);
   const [customDescription, setCustomDescription] = useState('');
-  const [filePath, setFilePath] = useState('')
+  const [filePath, setFilePath] = useState('');
   const envRef = useRef<YEnvironment | null>(null);
   let navigate = useNavigate();
 
@@ -53,23 +56,21 @@ function Rooms() {
       // Silent error handling for loading rooms
     }
   };
-  
+
   const handlePickFolder = async () => {
     const selectedPath = await window.electronAPI.selectFolder();
     if (selectedPath) {
       setFilePath(selectedPath);
     }
   };
-  
 
   // Load past rooms from IndexedDB
   useEffect(() => {
     loadPastRooms();
-    async function deviceFetch(){
+    async function deviceFetch() {
       setDeviceID(await fetchDeviceID());
     }
     deviceFetch();
-
   }, []);
 
   const saveRoomToHistory = async (
@@ -113,7 +114,7 @@ function Rooms() {
     setIsServerStarting(true);
     try {
       // Start the signaling server
-      await window.electronAPI.startServer;
+      window.electronAPI.startServer();
 
       // Save to history
       await saveRoomToHistory(
@@ -195,16 +196,12 @@ function Rooms() {
       <div className="max-w-4xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <Button onClick={() => navigate(-1)}>
-            &lt;
-          </Button>
+          <Button onClick={() => navigate(-1)}>&lt;</Button>
           <h1 className="text-3xl font-bold mb-2">VideoThync Rooms</h1>
           <p className="text-gray-400">
             Create a new room or join an existing one
           </p>
-          <p className="text-gray-400">
-            Your Device ID: {deviceID}
-          </p>   
+          <p className="text-gray-400">Your Device ID: {deviceID}</p>
         </div>
 
         {/* Tab Navigation */}
@@ -256,11 +253,11 @@ function Rooms() {
                 <Label className="block text-sm font-medium mb-2">
                   Path to folder
                 </Label>
-                <Button onClick={handlePickFolder} className='mb-2'>
+                <Button onClick={handlePickFolder} className="mb-2">
                   Browse
                 </Button>
                 <Input
-                  id='folder'
+                  id="folder"
                   value={filePath}
                   placeholder="Folder Path"
                   readOnly
@@ -280,8 +277,6 @@ function Rooms() {
                   className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
                 />
               </div>
-
-
 
               <div className="bg-gray-800 p-4 rounded-md">
                 <p className="text-sm text-gray-300 mb-2">
