@@ -20,21 +20,20 @@ function generateRandomFolderId(length = 8): string {
 }
 
 
-const fetchDeviceID = async () => {
+export const fetchDeviceID = async () => {
 
     const res = await fetch(URL + "/config", requestGET)
     const config = await res.json();
-    return config.devices[0].deviceID;
+    return config.devices[config.devices.length - 1].deviceID;
 }
 
-export async function createOrUpdateFolderSyncThing(endpoint: string, label: string) {        
+export async function createOrUpdateFolderSyncThing(endpoint: string, label: string, filePath: string) {        
         const folderID = generateRandomFolderId();
         const device_id = await fetchDeviceID();
-        
         const folderConfig = {
             id: folderID,
             label: label,
-            path: 'C:\\User\\Civ\\Desktop\\gay',
+            path: `${filePath}`,
             type: 'sendreceive', // or 'sendonly', 'receiveonly'
             devices: [
             {
@@ -74,6 +73,43 @@ export async function createOrUpdateFolderSyncThing(endpoint: string, label: str
         throw err;
     }
 }
+
+export async function addDevicesID(endpoint: string, deviseID: string){
+    
+    const response = await fetch(URL + endpoint, requestGET)
+
+    const config = await response.json();
+    const alreadyExists = config.devices.some((device: any) => device.deviceID === deviseID);
+    if (alreadyExists){
+        console.log('Device already exists')
+        return { success: true, message: "Device already exists" };
+    }
+    config.devices.push({
+        deviceID: deviseID,
+        name: "New Device",
+        addresses: ["dynamic"], // Required default
+        compression: "metadata", // Default
+        introducer: false,
+        skipIntroductionRemovals: false
+    })
+
+    const requestPOST = {
+            method: 'PUT',
+            headers: {
+            'X-API-Key': apiKey,
+            'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(config)
+        }
+    const res = await fetch(URL + endpoint, requestPOST)
+    console.log(res)
+    if (!res.ok){
+            // If the server returns an error, it might have a text body
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+        }
+    return res
+  }
 
 export async function fetchSyncthingData(endpoint: string){
       try {

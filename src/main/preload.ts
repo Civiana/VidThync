@@ -23,7 +23,14 @@ const electronHandler = {
     },
   },
 };
+contextBridge.exposeInMainWorld('electronAPI', {
+  selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
+  startServer: () => ipcRenderer.send('start-signaling-server')
+
+});
 
 contextBridge.exposeInMainWorld('electron', electronHandler);
+// preload.ts
+
 
 export type ElectronHandler = typeof electronHandler;

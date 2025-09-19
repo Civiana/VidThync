@@ -2,7 +2,6 @@ import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import 'tailwindcss/index.css';
 import './App.css';
 import { useEffect, useRef, useState } from 'react';
-import { startServer } from 'src/signalingServer/functionStarter.js';
 import {
   createYEnvironment,
   destroyYEnvironment,
@@ -10,10 +9,14 @@ import {
 } from 'src/yjsRTC/setup';
 import { useNavigate } from 'react-router';
 
-import {createOrUpdateFolderSyncThing, fetchSyncthingData} from 'src/syncthing/API';
+import {createOrUpdateFolderSyncThing, fetchSyncthingData, fetchDeviceID, addDevicesID} from 'src/syncthing/API';
 
 import { Button } from '@/components/ui/button';
 import Rooms from 'src/screens/Rooms';import { error } from 'console';
+import { Input } from "@/components/ui/input"
+import { URL } from 'url';
+import { get } from 'http';
+
 
 
 
@@ -24,6 +27,7 @@ function Hello() {
   const envRef = useRef<YEnvironment | null>(null);
   const [data, setData] = useState('')
   const [textValue, setTextValue] = useState('');
+  const [deviceID, setDeviceID] = useState('');
   const [textValue1, setTextValue1] = useState('');
   let navigate = useNavigate();
   const [labels, setLabels] = useState('');
@@ -37,10 +41,41 @@ function Hello() {
     setData(response)
   }
 
+  async function handleAddDevices(endpoint: string, deviceID: string){
+    setDeviceID(await addDevicesID(endpoint, deviceID))
+  }
+
+
+
   useEffect(() => {
+    
+      async function shareFolder(deviseID: string){
+    const response = await fetch('http://localhost:8384/rest/config/folders/0vxf2-iua', {
+      method: 'GET', 
+      headers: {
+            'X-API-Key': 'RsTsp5wUXr9XgSLnMRfgvP5mAMNLyTCK',
+        },})
+    const config = await response.json();
+        
+    const alreadyExist = config.devices.some(device => deviceID == deviseID);
+    if (!alreadyExist){
+      config.devices.push({
+        deviceID:deviseID
+      })
+    }
+    const res = await fetch('http://localhost:8384/rest/config/folders/0vxf2-iua', {
+      method: 'PUT', 
+      headers: {
+            'X-API-Key': 'RsTsp5wUXr9XgSLnMRfgvP5mAMNLyTCK',
+        },
+        body: JSON.stringify(config)
+      })
+    console.log(config)
+    
+  }
+  shareFolder('ENCR43C-RXJIIBD-HAKR4XZ-CU2YJU5-FIFA5BH-K6RVGFF-ZM6NP7B-3GSTLA5');
     // 1) Choose a roomName - peers must use the same name to sync
     const roomName = 'videothync-demo';
-
     // 2) Ensure your signaling server is running (see button below)
     //    If you prefer a public one temporarily, replace with 'wss://signaling.yjs.dev'
     const signalingUrl = 'ws://localhost:4444';
@@ -50,7 +85,6 @@ function Hello() {
 
     // 4) Use Y.Map instead of Y.Text to store strings
     const ymap = envRef.current.ydoc.getMap('shared-data');
-
     // Initialize from current doc content (might come from IndexedDB)
     // Using a specific key like 'textContent' to store our string
     const initialText = ymap.get('textContent') || '';
@@ -101,22 +135,22 @@ function Hello() {
       >
         connect to room
       </Button>
-      <Button onClick={startServer} variant="outline">
+      <Button onClick={window.electronAPI.startServer} variant="outline">
         Start signaling server for WebRTC
       </Button>
 
       <Button onClick={async () => {await handleFetchingData("/config/folders"); console.log(data);}} variant='outline'>
         get folders json
       </Button>
-        <p className='text-yellow-300'>Folder Name</p>
-        <input className="w-full text-white h-48 p-2 rounded border-width 45px border-amber-500" value={labels} placeholder='Folder Name' type='text' onChange={(event) => {setLabels(event.target.value);}}/>
-
-        <p>{labels}</p>
-      <Button onClick={async () => {await handleCreateOrUpdate("/config/folders", `${labels}`); console.log(data);}} variant='outline'>
-        create new folder
+        <p className='text-yellow-300'>Add Device</p>
+        <input className="w-full text-white h-48 p-2 rounded border-width 45px border-amber-500" value={deviceID} placeholder='Device Number' type='text' onChange={(event) => {setDeviceID(event.target.value);}}/>
+        
+      <Button onClick={async () => {await handleAddDevices("/config", `${deviceID}`);}} variant='outline'>
+        Add Device
 
       </Button>
 
+      <Input id='video' type='file'/>
 
       <div className="flex flex-col gap-2 mt-4">
         <p className="text-white">
@@ -136,6 +170,7 @@ function Hello() {
           onChange={onChange}
           placeholder="Type here. Open a second window or machine with the same room to see live sync."
         />
+        
       </div>
     </div>
   );
