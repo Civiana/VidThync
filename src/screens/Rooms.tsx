@@ -8,6 +8,7 @@ import TestConnection from 'src/components/TestConnection';
 import {
   createOrUpdateFolderSyncThing,
   fetchDeviceID,
+  addDevicesID,
 } from 'src/syncthing/API';
 import {
   createYEnvironment,
@@ -40,6 +41,7 @@ function Rooms() {
   const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
   const [roomName, setRoomName] = useState('');
   const [deviceID, setDeviceID] = useState('');
+  const [hostDeviceId, setHostDeviceId] = useState('');
   const [signalingUrl, setSignalingUrl] = useState('ws://localhost:4444');
   const [pastRooms, setPastRooms] = useState<RoomRecord[]>([]);
   const [isServerStarting, setIsServerStarting] = useState(false);
@@ -170,6 +172,7 @@ function Rooms() {
     }
 
     handleJoinRoom(roomName, signalingUrl);
+    addDevicesID('/config', hostDeviceId);
   };
 
   const deleteRoom = async (roomId: number) => {
@@ -321,6 +324,19 @@ function Rooms() {
                       value={roomName}
                       onChange={(e) => setRoomName(e.target.value)}
                       placeholder="Enter room name"
+                      className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="block text-sm font-medium mb-2">
+                      Host Device ID
+                    </Label>
+                    <Input
+                      type="text"
+                      value={hostDeviceId}
+                      onChange={(e) => setHostDeviceId(e.target.value)}
+                      placeholder="Enter host device ID"
                       className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
                     />
                   </div>
