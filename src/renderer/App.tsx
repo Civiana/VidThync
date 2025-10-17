@@ -12,7 +12,9 @@ import { useNavigate } from 'react-router';
 import {createOrUpdateFolderSyncThing, fetchSyncthingData, fetchDeviceID, addDevicesID} from 'src/syncthing/API';
 
 import { Button } from '@/components/ui/button';
-import Rooms from 'src/screens/Rooms';import { error } from 'console';
+import Rooms from 'src/screens/Rooms';
+import Join from 'src/screens/Joins';
+;import { error } from 'console';
 import { Input } from "@/components/ui/input"
 import { URL } from 'url';
 import { get } from 'http';
@@ -46,8 +48,8 @@ function Hello() {
   }
 
 
-
   useEffect(() => {
+    
     
       async function shareFolder(deviseID: string){
     const response = await fetch('http://localhost:8384/rest/config/folders/0vxf2-iua', {
@@ -132,7 +134,7 @@ function Hello() {
           navigate('/room');
         }}
         variant="outline"
-      >
+      className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded ">
         connect to room
       </Button>
       <Button onClick={window.electronAPI.startServer} variant="outline">
@@ -182,6 +184,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Hello />} />
         <Route path="/room" element={<Rooms />} />
+        <Route path="/joins" element={<Join />} />
+
       </Routes>
     </Router>
   );

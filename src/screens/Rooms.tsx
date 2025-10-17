@@ -230,6 +230,12 @@ function Rooms() {
             Create a new room or join an existing one
           </p>
           <p className="text-gray-400">Your Device ID: {deviceID}</p>
+          <Button
+        onClick={() => {
+          navigate('/joins');
+        }}>
+        check join requests
+      </Button>
         </div>
 
         {/* Tab Navigation */}
@@ -473,3 +479,4 @@ function Rooms() {
 }
 
 export default Rooms;
+

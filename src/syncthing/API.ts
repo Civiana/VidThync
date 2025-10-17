@@ -1,4 +1,4 @@
-const apiKey = 'AfwiaaenNcK6vkTztac7kbjuVNgzkywT';
+const apiKey = 'RsTsp5wUXr9XgSLnMRfgvP5mAMNLyTCK';
 const URL = 'http://localhost:8384/rest';
 
 const requestGET = {
@@ -81,7 +81,6 @@ export async function createOrUpdateFolderSyncThing(
 
 export async function addDevicesID(endpoint: string, deviseID: string) {
   const response = await fetch(URL + endpoint, requestGET);
-
   const config = await response.json();
   const alreadyExists = config.devices.some(
     (device: any) => device.deviceID === deviseID,
@@ -111,6 +110,46 @@ export async function addDevicesID(endpoint: string, deviseID: string) {
   console.log(res);
   if (!res.ok) {
     // If the server returns an error, it might have a text body
+    const errorText = await response.text();
+    throw new Error(
+      `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
+    );
+  }
+  return res;
+}
+
+export async function userJoinRequest(){
+  const response = await fetch(URL + '/cluster/pending/devices', requestGET);
+  if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+  const res_json = await response.json();
+  return res_json
+
+}
+
+export async function acceptUsers(userID: string, userName: string){
+  const response = await fetch(URL + '/config', requestGET);
+  const config = await response.json();
+  config.devices.push({
+    deviceID: userID,
+    name: userName,
+    addresses: ['dynamic'], // Required default
+    compression: 'metadata', // Default
+    introducer: false,
+    skipIntroductionRemovals: false,
+  });
+
+  const requestPOST = {
+    method: 'PUT',
+    headers: {
+      'X-API-Key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
+  };
+  const res = await fetch(URL + '/config', requestPOST);
+  if (!res.ok) {
     const errorText = await response.text();
     throw new Error(
       `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
