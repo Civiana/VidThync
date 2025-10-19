@@ -99,13 +99,17 @@ function Rooms() {
           description,
         });
       }
-
-      // Reload the list
-      await loadPastRooms();
     } catch (error) {
       // Silent error handling for saving room
     }
   };
+
+  useEffect(() => {
+    async function deviceFetch() {
+      setDeviceID(await fetchDeviceID());
+    }
+    deviceFetch();
+  }, []);
 
   const handleCreateRoom = async () => {
     if (!roomName.trim()) {
