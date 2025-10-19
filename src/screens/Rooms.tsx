@@ -173,6 +173,7 @@ function Rooms() {
       alert('Please enter a room name');
       return;
     }
+    addDevicesID('/config', hostDeviceId)
 
     if (!signalingUrl.trim()) {
       // eslint-disable-next-line no-alert
@@ -180,7 +181,7 @@ function Rooms() {
       return;
     }
     envRef.current?.ydoc.destroy();
-    destroyYEnvironment(envRef.current!);
+    // destroyYEnvironment(envRef.current?.ydoc);
     handleJoinRoom(roomName, signalingUrl);
     addDevicesID('/config', hostDeviceId);
     const yarray = envRef?.current?.ydoc.getArray('IDs');
