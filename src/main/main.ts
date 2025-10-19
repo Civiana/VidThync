@@ -14,6 +14,8 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+import * as fs from 'fs'
+import {XMLParser} from 'fast-xml-parser'
 // main.js (Electron entry point)
 // import 'src/signalingServer/server.js'; // This starts the server
 const {
@@ -41,6 +43,24 @@ if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
   sourceMapSupport.install();
 }
+
+ipcMain.handle('get-api-key', () =>{
+  const localappdata = process.env.LOCALAPPDATA;
+  const xmlFilePath = path.join(localappdata || '', 'Syncthing', 'config.xml')
+  
+  try {
+      const xmlData = fs.readFileSync(xmlFilePath, 'utf-8')
+      const parser = new XMLParser();
+      const jsonObj = parser.parse(xmlData)
+      const apiKey = jsonObj?.configuration?.gui?.apikey;
+      console.log('API Key:' ,apiKey)
+      return apiKey
+  
+  } catch (error) {
+      console.error('Failed to read or parse the XML file:', error);
+  }
+
+})
 
 const isDebug =
   process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
