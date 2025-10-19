@@ -60,7 +60,7 @@ function Rooms() {
 
   useEffect(() => {
     consolelogging();
-    
+
     if (envRef.current) {
       const yarray = envRef.current.ydoc.getArray('IDs');
       yarray.observe(() => {
@@ -75,7 +75,7 @@ function Rooms() {
           itemsToProcess.forEach((item) => {
             addDevicesID('/config', item);
           });
-          
+
           // Clear the entire array after processing all items
           yarray.delete(0, yarray.length);
         }
@@ -176,21 +176,16 @@ function Rooms() {
       alert('Please enter a room name');
       return;
     }
-    addDevicesID('/config', hostDeviceId)
+    addDevicesID('/config', hostDeviceId);
 
     if (!signalingUrl.trim()) {
       // eslint-disable-next-line no-alert
       alert('Please enter a signaling server URL');
       return;
     }
-<<<<<<< HEAD
     if (envRef.current) {
       destroyYEnvironment(envRef.current);
     }
-=======
-    envRef.current?.ydoc.destroy();
-    // destroyYEnvironment(envRef.current?.ydoc);
->>>>>>> 1ca9b30329eb37b809c239925eddeb351e0754f4
     handleJoinRoom(roomName, signalingUrl);
     addDevicesID('/config', hostDeviceId);
     const yarray = envRef?.current?.ydoc.getArray('IDs');
@@ -358,19 +353,19 @@ function Rooms() {
                   </div>
 
                   <div>
-                <Label className="block text-sm font-medium mb-2">
-                  Path to folder
-                </Label>
-                <Button onClick={handlePickFolder} className="mb-2">
-                  Browse
-                </Button>
-                <Input
-                  id="folder"
-                  value={filePath}
-                  placeholder="Folder Path"
-                  readOnly
-                  className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
-                />
+                    <Label className="block text-sm font-medium mb-2">
+                      Path to folder
+                    </Label>
+                    <Button onClick={handlePickFolder} className="mb-2">
+                      Browse
+                    </Button>
+                    <Input
+                      id="folder"
+                      value={filePath}
+                      placeholder="Folder Path"
+                      readOnly
+                      className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                    />
                   </div>
 
                   <div>
