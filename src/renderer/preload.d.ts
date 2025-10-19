@@ -8,6 +8,7 @@ declare global {
     electronAPI: {
       selectFolder: () => Promise<string | null>;
       startServer: () => void;
+      syncThingApiKey: string;
       syncthingFetch: (
         url: string,
         options?: RequestInit,
