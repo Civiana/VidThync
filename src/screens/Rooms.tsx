@@ -179,9 +179,9 @@ function Rooms() {
       alert('Please enter a signaling server URL');
       return;
     }
-    envRef.current?.ydoc.destroy();
     destroyYEnvironment(envRef.current!);
     handleJoinRoom(roomName, signalingUrl);
+
     addDevicesID('/config', hostDeviceId);
     const yarray = envRef?.current?.ydoc.getArray('IDs');
     yarray?.push([deviceID]);

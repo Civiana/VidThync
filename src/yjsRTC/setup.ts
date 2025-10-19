@@ -6,6 +6,7 @@ export type YEnvironment = {
   ydoc: Y.Doc;
   idb: IndexeddbPersistence;
   webrtc: WebrtcProvider;
+  roomName: string;
 };
 // this function creates a customisable synced and shared YDOC using the same room name.
 export function createYEnvironment(
@@ -16,7 +17,7 @@ export function createYEnvironment(
 
   // Persist the document to IndexedDB under the specified room name
   const idb = new IndexeddbPersistence(roomName, ydoc);
- 
+
   // Connect to peers via WebRTC (using local signaling server), Zaki notice how we pass the same ydoc
   // to WebrtcProvider because we want to share the same document with all peers
   const webrtc = new WebrtcProvider(roomName, ydoc, {
@@ -27,10 +28,13 @@ export function createYEnvironment(
     console.log('[y-webrtc]', status);
   });
 
-  return { ydoc, idb, webrtc };
+  return { ydoc, idb, webrtc, roomName };
 }
 
 export function destroyYEnvironment(env: YEnvironment) {
   // destroy WebRTC connections on cleanup
+  env.ydoc.destroy();
   env.webrtc.destroy();
+  env.idb.del(env.roomName);
+  env.idb.destroy();
 }
