@@ -173,19 +173,13 @@ function Rooms() {
       alert('Please enter a room name');
       return;
     }
-    addDevicesID('/config', hostDeviceId)
 
     if (!signalingUrl.trim()) {
       // eslint-disable-next-line no-alert
       alert('Please enter a signaling server URL');
       return;
     }
-<<<<<<< HEAD
     destroyYEnvironment(envRef.current!);
-=======
-    envRef.current?.ydoc.destroy();
-    // destroyYEnvironment(envRef.current?.ydoc);
->>>>>>> ff405bbde267dafbe47b0561466da88100bb7633
     handleJoinRoom(roomName, signalingUrl);
 
     addDevicesID('/config', hostDeviceId);
