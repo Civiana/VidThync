@@ -173,16 +173,16 @@ function Rooms() {
       alert('Please enter a room name');
       return;
     }
+    addDevicesID('/config', hostDeviceId)
 
     if (!signalingUrl.trim()) {
       // eslint-disable-next-line no-alert
       alert('Please enter a signaling server URL');
       return;
     }
-
-    destroyYEnvironment(envRef.current!);
+    envRef.current?.ydoc.destroy();
+    // destroyYEnvironment(envRef.current?.ydoc);
     handleJoinRoom(roomName, signalingUrl);
-
     addDevicesID('/config', hostDeviceId);
     const yarray = envRef?.current?.ydoc.getArray('IDs');
     yarray?.push([deviceID]);
@@ -346,6 +346,22 @@ function Rooms() {
                       placeholder="Enter host device ID"
                       className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
                     />
+                  </div>
+
+                  <div>
+                <Label className="block text-sm font-medium mb-2">
+                  Path to folder
+                </Label>
+                <Button onClick={handlePickFolder} className="mb-2">
+                  Browse
+                </Button>
+                <Input
+                  id="folder"
+                  value={filePath}
+                  placeholder="Folder Path"
+                  readOnly
+                  className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                />
                   </div>
 
                   <div>
