@@ -9,7 +9,6 @@ import {
   createOrUpdateFolderSyncThing,
   fetchDeviceID,
   addDevicesID,
-  consolelogging,
 } from 'src/syncthing/API';
 import {
   createYEnvironment,
@@ -59,8 +58,6 @@ function Rooms() {
   };
 
   useEffect(() => {
-    consolelogging();
-
     if (envRef.current) {
       const yarray = envRef.current.ydoc.getArray('IDs');
       yarray.observe(() => {
