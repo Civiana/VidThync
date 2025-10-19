@@ -33,8 +33,8 @@ export function createYEnvironment(
 
 export function destroyYEnvironment(env: YEnvironment) {
   // destroy WebRTC connections on cleanup
-  env.ydoc.destroy();
-  env.webrtc.destroy();
   env.idb.del(env.roomName);
   env.idb.destroy();
+  env.ydoc.destroy();
+  env.webrtc.destroy();
 }
