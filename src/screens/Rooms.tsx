@@ -40,21 +40,11 @@ function Rooms() {
   const [deviceID, setDeviceID] = useState('');
   const [hostDeviceId, setHostDeviceId] = useState('');
   const [signalingUrl, setSignalingUrl] = useState('ws://localhost:4444');
-  const [pastRooms, setPastRooms] = useState<RoomRecord[]>([]);
   const [isServerStarting, setIsServerStarting] = useState(false);
   const [customDescription, setCustomDescription] = useState('');
   const [filePath, setFilePath] = useState('');
   const envRef = useRef<YEnvironment | null>(null);
   let navigate = useNavigate();
-
-  const loadPastRooms = async () => {
-    try {
-      const rooms = await db.rooms.orderBy('lastConnected').reverse().toArray();
-      setPastRooms(rooms);
-    } catch (error) {
-      // Silent error handling for loading rooms
-    }
-  };
 
   const handlePickFolder = async () => {
     const selectedPath = await window.electronAPI.selectFolder();
@@ -85,15 +75,6 @@ function Rooms() {
       });
     }
   }, [activeTab]);
-
-  // Load past rooms from IndexedDB
-  useEffect(() => {
-    loadPastRooms();
-    async function deviceFetch() {
-      setDeviceID(await fetchDeviceID());
-    }
-    deviceFetch();
-  }, []);
 
   const saveRoomToHistory = async (
     name: string,
@@ -195,15 +176,6 @@ function Rooms() {
     addDevicesID('/config', hostDeviceId);
     const yarray = envRef?.current?.ydoc.getArray('IDs');
     yarray?.push([deviceID]);
-  };
-
-  const deleteRoom = async (roomId: number) => {
-    try {
-      await db.rooms.delete(roomId);
-      await loadPastRooms();
-    } catch (error) {
-      // Silent error handling for deleting room
-    }
   };
 
   const formatDate = (date: Date) => {
@@ -391,71 +363,6 @@ function Rooms() {
                     Connect to Room
                   </Button>
                 </div>
-              </div>
-
-              {/* Past Rooms */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium">Recent Rooms</h3>
-                  <Button onClick={loadPastRooms} variant="outline" size="sm">
-                    Refresh
-                  </Button>
-                </div>
-
-                {pastRooms.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <p>No recent rooms found</p>
-                    <p className="text-sm mt-1">
-                      Create or join a room to see it here
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {pastRooms.map((room) => (
-                      <div
-                        key={room.id}
-                        className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                              <h4 className="font-medium">{room.name}</h4>
-                              {room.description && (
-                                <span className="text-xs bg-gray-700 px-2 py-1 rounded">
-                                  {room.description}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-400 mt-1">
-                              {room.signalingUrl}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Last connected:{' '}
-                              {formatDate(new Date(room.lastConnected))}
-                            </p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() =>
-                                handleJoinRoom(room.name, room.signalingUrl)
-                              }
-                              size="sm"
-                            >
-                              Connect
-                            </Button>
-                            <Button
-                              onClick={() => room.id && deleteRoom(room.id)}
-                              variant="destructive"
-                              size="sm"
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           )}
