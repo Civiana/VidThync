@@ -146,7 +146,7 @@ export async function userJoinRequest() {
   return res_json;
 }
 
-export async function acceptUsers(userID: string, userName: string) {
+export async function acceptUsers(userID: string, userName: string, roomName: string) {
   const requestGET = await getRequestGET();
   const response = await fetch(URL + '/config', requestGET);
   const config = await response.json();
@@ -175,7 +175,7 @@ export async function acceptUsers(userID: string, userName: string) {
     throw new Error(
       `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
     );
-  addUserToFolder(userID, )
+  addUserToFolder(userID, roomName)
   }
   return res;
 }

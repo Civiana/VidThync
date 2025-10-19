@@ -272,7 +272,7 @@ function Rooms() {
               </Button>
               <div>
                 {envRef.current?.ydoc && (
-                  <Joins ydoc={envRef.current?.ydoc ?? null} />
+                  <Joins ydoc={envRef.current?.ydoc ?? null} roomName={roomName} />
                 )}
               </div>
             </div>

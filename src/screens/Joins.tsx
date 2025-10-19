@@ -10,9 +10,10 @@ interface Devices {
 
 type props = {
   ydoc: Y.Doc;
+  roomName: string
 };
 
-function Joins({ ydoc }: props) {
+function Joins({ ydoc, roomName }: props) {
   const [devices, setDevices] = useState<Devices[]>([]);
   const [recheck, setRecheck] = useState<boolean>(false);
   const [deviceArr, setDeviceArr] = useState<string[]>([]);
@@ -53,7 +54,7 @@ function Joins({ ydoc }: props) {
           <li key={device.id} className="group">
             {device.name} ({device.id})
             <button
-              onClick={() => acceptUsers(device.id, device.name)}
+              onClick={() => acceptUsers(device.id, device.name, roomName)}
               className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
             >
               Accept
