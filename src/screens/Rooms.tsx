@@ -9,6 +9,7 @@ import {
   createOrUpdateFolderSyncThing,
   fetchDeviceID,
   addDevicesID,
+  consolelogging,
 } from 'src/syncthing/API';
 import {
   createYEnvironment,
@@ -58,6 +59,8 @@ function Rooms() {
   };
 
   useEffect(() => {
+    consolelogging();
+    
     if (envRef.current) {
       const yarray = envRef.current.ydoc.getArray('IDs');
       yarray.observe(() => {
@@ -72,7 +75,7 @@ function Rooms() {
           itemsToProcess.forEach((item) => {
             addDevicesID('/config', item);
           });
-
+          
           // Clear the entire array after processing all items
           yarray.delete(0, yarray.length);
         }

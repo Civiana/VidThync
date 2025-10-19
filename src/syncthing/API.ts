@@ -191,3 +191,10 @@ export async function fetchSyncthingData(endpoint: string) {
     console.error('Fetch failed:', err);
   }
 }
+
+export async function consolelogging(){
+  const requestGET  = await getRequestGET();
+  const response = await fetch(URL + `/config/folders/jli94-czrxx`, requestGET)
+  const json = await response.json();
+  console.log(json)
+}
