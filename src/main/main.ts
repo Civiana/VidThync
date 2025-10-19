@@ -51,7 +51,7 @@ if (isDebug) {
 
 ipcMain.handle('dialog:selectFolder', async () => {
   const result = await dialog.showOpenDialog({
-    properties: ['openDirectory']
+    properties: ['openDirectory'],
   });
 
   if (result.canceled) return null;
@@ -92,6 +92,7 @@ const createWindow = async () => {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: true,
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
         : path.join(__dirname, '../../.erb/dll/preload.js'),
@@ -144,6 +145,25 @@ app.on('window-all-closed', () => {
 ipcMain.on('start-signaling-server', () => {
   startSignalingServer();
 });
+
+// Handle Syncthing API requests from renderer
+ipcMain.handle(
+  'syncthing:fetch',
+  async (event, url: string, options: Record<string, any> = {}) => {
+    try {
+      const response = await fetch(url, options);
+      const data = await response.json();
+      return { success: true, data, status: response.status };
+    } catch (error) {
+      console.error('Syncthing fetch error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        status: 0,
+      };
+    }
+  },
+);
 app
   .whenReady()
   .then(() => {

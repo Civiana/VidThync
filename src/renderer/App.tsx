@@ -51,7 +51,7 @@ function Hello() {
 
   useEffect(() => {
     async function shareFolder(deviseID: string) {
-      const response = await fetch(
+      const response = await window.electronAPI.syncthingFetch(
         'http://localhost:8384/rest/config/folders/0vxf2-iua',
         {
           method: 'GET',
@@ -60,27 +60,39 @@ function Hello() {
           },
         },
       );
-      const config = await response.json();
+
+      if (!response.success) {
+        console.error('Failed to fetch folder config:', response.error);
+        return;
+      }
+
+      const config = response.data;
 
       const alreadyExist = config.devices.some(
-        (device) => deviceID == deviseID,
+        (device: any) => deviceID == deviseID,
       );
       if (!alreadyExist) {
         config.devices.push({
           deviceID: deviseID,
         });
       }
-      const res = await fetch(
+      const res = await window.electronAPI.syncthingFetch(
         'http://localhost:8384/rest/config/folders/0vxf2-iua',
         {
           method: 'PUT',
           headers: {
             'X-API-Key': 'RsTsp5wUXr9XgSLnMRfgvP5mAMNLyTCK',
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify(config),
         },
       );
-      console.log(config);
+
+      if (res.success) {
+        console.log('Folder shared successfully:', config);
+      } else {
+        console.error('Failed to update folder config:', res.error);
+      }
     }
     shareFolder(
       'ENCR43C-RXJIIBD-HAKR4XZ-CU2YJU5-FIFA5BH-K6RVGFF-ZM6NP7B-3GSTLA5',

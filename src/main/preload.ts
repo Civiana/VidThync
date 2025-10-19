@@ -25,12 +25,12 @@ const electronHandler = {
 };
 contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
-  startServer: () => ipcRenderer.send('start-signaling-server')
-
+  startServer: () => ipcRenderer.send('start-signaling-server'),
+  syncthingFetch: (url: string, options?: Record<string, any>) =>
+    ipcRenderer.invoke('syncthing:fetch', url, options),
 });
 
 contextBridge.exposeInMainWorld('electron', electronHandler);
 // preload.ts
-
 
 export type ElectronHandler = typeof electronHandler;

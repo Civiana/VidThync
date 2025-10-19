@@ -1,12 +1,26 @@
-const apiKey = 'RsTsp5wUXr9XgSLnMRfgvP5mAMNLyTCK';
+import { loadSyncthingApiKey } from 'src/utils/apiKeyStorage';
+
 const URL = 'http://localhost:8384/rest';
 
-const requestGET = {
-  method: 'GET',
-  headers: {
-    'X-API-Key': apiKey,
-  },
-};
+let apiKey: string | null = null;
+
+// Initialize API key from IndexedDB
+async function initApiKey() {
+  if (!apiKey) {
+    apiKey = await loadSyncthingApiKey();
+  }
+  return apiKey;
+}
+
+async function getRequestGET() {
+  const key = await initApiKey();
+  return {
+    method: 'GET',
+    headers: {
+      'X-API-Key': key || '',
+    },
+  };
+}
 
 function generateRandomFolderId(length = 8): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -20,6 +34,7 @@ function generateRandomFolderId(length = 8): string {
 }
 
 export const fetchDeviceID = async () => {
+  const requestGET = await getRequestGET();
   const res = await fetch(URL + '/system/status', requestGET);
   const config = await res.json();
   return config.myID;
@@ -30,6 +45,7 @@ export async function createOrUpdateFolderSyncThing(
   label: string,
   filePath: string,
 ) {
+  const key = await initApiKey();
   const folderID = generateRandomFolderId();
   const device_id = await fetchDeviceID();
   const folderConfig = {
@@ -50,7 +66,7 @@ export async function createOrUpdateFolderSyncThing(
   const requestPOST = {
     method: 'POST',
     headers: {
-      'X-API-Key': apiKey,
+      'X-API-Key': key || '',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(folderConfig),
@@ -80,6 +96,7 @@ export async function createOrUpdateFolderSyncThing(
 }
 
 export async function addDevicesID(endpoint: string, deviseID: string) {
+  const requestGET = await getRequestGET();
   const response = await fetch(URL + endpoint, requestGET);
   const config = await response.json();
   const alreadyExists = config.devices.some(
@@ -98,10 +115,11 @@ export async function addDevicesID(endpoint: string, deviseID: string) {
     skipIntroductionRemovals: false,
   });
 
+  const key = await initApiKey();
   const requestPOST = {
     method: 'PUT',
     headers: {
-      'X-API-Key': apiKey,
+      'X-API-Key': key || '',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(config),
@@ -118,17 +136,18 @@ export async function addDevicesID(endpoint: string, deviseID: string) {
   return res;
 }
 
-export async function userJoinRequest(){
+export async function userJoinRequest() {
+  const requestGET = await getRequestGET();
   const response = await fetch(URL + '/cluster/pending/devices', requestGET);
   if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
   const res_json = await response.json();
-  return res_json
-
+  return res_json;
 }
 
-export async function acceptUsers(userID: string, userName: string){
+export async function acceptUsers(userID: string, userName: string) {
+  const requestGET = await getRequestGET();
   const response = await fetch(URL + '/config', requestGET);
   const config = await response.json();
   config.devices.push({
@@ -140,10 +159,11 @@ export async function acceptUsers(userID: string, userName: string){
     skipIntroductionRemovals: false,
   });
 
+  const key = await initApiKey();
   const requestPOST = {
     method: 'PUT',
     headers: {
-      'X-API-Key': apiKey,
+      'X-API-Key': key || '',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(config),
@@ -160,6 +180,7 @@ export async function acceptUsers(userID: string, userName: string){
 
 export async function fetchSyncthingData(endpoint: string) {
   try {
+    const requestGET = await getRequestGET();
     const response = await fetch(URL + endpoint, requestGET);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
