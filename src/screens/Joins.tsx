@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import React, { useState, useEffect } from 'react';
 import { userJoinRequest, acceptUsers } from 'src/syncthing/API';
 
@@ -8,6 +9,7 @@ interface Devices {
 
 function Joins() {
   const [devices, setDevices] = useState<Devices[]>([]);
+  const [recheck, setRecheck] = useState<boolean>(false);
 
   useEffect(() => {
     async function fetchDevices() {
@@ -22,7 +24,7 @@ function Joins() {
     }
 
     fetchDevices();
-  }, []);
+  }, [recheck]);
 
   return (
     <div>
@@ -40,6 +42,13 @@ function Joins() {
           </li>
         ))}
       </ul>
+      <Button
+        onClick={() => {
+          setRecheck(!recheck);
+        }}
+      >
+        RECHECK
+      </Button>
     </div>
   );
 }
