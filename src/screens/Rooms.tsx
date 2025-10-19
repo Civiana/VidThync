@@ -135,8 +135,6 @@ function Rooms() {
       alert('Please enter a room name');
       return;
     }
-    addDevicesID('/config', hostDeviceId);
-
     if (!signalingUrl.trim()) {
       // eslint-disable-next-line no-alert
       alert('Please enter a signaling server URL');

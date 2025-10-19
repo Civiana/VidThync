@@ -109,7 +109,8 @@ export async function addDevicesID(endpoint: string, deviseID: string) {
   config.devices.push({
     deviceID: deviseID,
     name: 'New Device',
-    addresses: ['dynamic'], // Required default
+    addresses: ['dynamic'],
+    autoAcceptFolders: true, // Required default
     compression: 'metadata', // Default
     introducer: false,
     skipIntroductionRemovals: false,
