@@ -83,34 +83,6 @@ function Rooms() {
     }
   }, [activeTab]);
 
-  const saveRoomToHistory = async (
-    name: string,
-    url: string,
-    description?: string,
-  ) => {
-    try {
-      // Check if room already exists
-      const existingRoom = await db.rooms
-        .where({ name, signalingUrl: url })
-        .first();
-
-      if (existingRoom) {
-        // Update existing room's last connected time
-        await db.rooms.update(existingRoom.id!, { lastConnected: new Date() });
-      } else {
-        // Add new room
-        await db.rooms.add({
-          name,
-          signalingUrl: url,
-          lastConnected: new Date(),
-          description,
-        });
-      }
-    } catch (error) {
-      // Silent error handling for saving room
-    }
-  };
-
   useEffect(() => {
     async function deviceFetch() {
       setDeviceID(await fetchDeviceID());
@@ -130,13 +102,6 @@ function Rooms() {
       // Start the signaling server
       window.electronAPI.startServer();
 
-      // Save to history
-      await saveRoomToHistory(
-        roomName,
-        'ws://localhost:4444',
-        customDescription || 'Local room',
-      );
-
       // Here you would typically navigate to the room or initialize the WebRTC connection
       // eslint-disable-next-line no-console
       console.log(`Created room: ${roomName} on ws://localhost:4444`);
@@ -155,9 +120,6 @@ function Rooms() {
 
   const handleJoinRoom = async (name: string, url: string) => {
     try {
-      // Save to history (updates last connected time)
-      await saveRoomToHistory(name, url);
-
       // Here you would typically connect to the room
       // eslint-disable-next-line no-console
       console.log(`Connecting to room: ${name} at ${url}`);
@@ -312,7 +274,9 @@ function Rooms() {
                   : 'Create Room & Start Server'}
               </Button>
               <div>
-                <Joins />
+                {envRef.current?.ydoc && (
+                  <Joins ydoc={envRef.current?.ydoc ?? null} />
+                )}
               </div>
             </div>
           )}
@@ -390,7 +354,18 @@ function Rooms() {
                     disabled={!roomName.trim() || !signalingUrl.trim()}
                     className="w-full"
                   >
-                    Connect to Room
+                    Connect to room
+                  </Button>
+
+                  <Button
+                    onClick={() => {
+                      if (!envRef.current) return;
+                      destroyYEnvironment(envRef.current);
+                    }}
+                    disabled={envRef.current === null}
+                    className="w-full"
+                  >
+                    disconnect
                   </Button>
                 </div>
               </div>
