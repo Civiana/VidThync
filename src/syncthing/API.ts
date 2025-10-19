@@ -170,12 +170,13 @@ export async function acceptUsers(userID: string, userName: string, roomName: st
     body: JSON.stringify(config),
   };
   const res = await fetch(URL + '/config', requestPOST);
+  addUserToFolder(userID, roomName)
   if (!res.ok) {
     const errorText = await response.text();
     throw new Error(
       `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
     );
-  addUserToFolder(userID, roomName)
+  
   }
   return res;
 }
