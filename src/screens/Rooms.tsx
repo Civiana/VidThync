@@ -179,6 +179,7 @@ function Rooms() {
       alert('Please enter a signaling server URL');
       return;
     }
+
     destroyYEnvironment(envRef.current!);
     handleJoinRoom(roomName, signalingUrl);
 
