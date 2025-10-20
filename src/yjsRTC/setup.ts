@@ -11,17 +11,18 @@ export type YEnvironment = {
 // this function creates a customisable synced and shared YDOC using the same room name.
 export function createYEnvironment(
   roomName: string,
-  signalingUrl: string,
+  Url: string,
+  port: string
 ): YEnvironment {
   const ydoc = new Y.Doc();
 
   // Persist the document to IndexedDB under the specified room name
   const idb = new IndexeddbPersistence(roomName, ydoc);
-
+  const signalingURL = `ws://${Url}:${port}`
   // Connect to peers via WebRTC (using local signaling server), Zaki notice how we pass the same ydoc
   // to WebrtcProvider because we want to share the same document with all peers
   const webrtc = new WebrtcProvider(roomName, ydoc, {
-    signaling: [signalingUrl],
+    signaling: [signalingURL],
   });
 
   webrtc.on('status', ({ status }) => {

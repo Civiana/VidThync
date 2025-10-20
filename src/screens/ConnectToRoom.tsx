@@ -15,7 +15,9 @@ function ConnectToRoom() {
   const [roomName, setRoomName] = useState('');
   const [deviceID, setDeviceID] = useState('');
   const [hostDeviceId, setHostDeviceId] = useState('');
-  const [signalingUrl, setSignalingUrl] = useState('ws://localhost:4444');
+  const [signalingUrl, setSignalingUrl] = useState('localhost');
+  const [signalingPort, setSignalingPort] = useState('4444');
+  const [hostPort, setHostPort] = useState('22000');
   const [filePath, setFilePath] = useState('');
   const [env, setEnv] = useState(false);
   const envRef = useRef<YEnvironment | null>(null);
@@ -35,14 +37,14 @@ function ConnectToRoom() {
     deviceFetch();
   }, []);
 
-  const handleJoinRoom = async (name: string, url: string) => {
+  const handleJoinRoom = async (name: string, url: string, domain: string) => {
     try {
       // Here you would typically connect to the room
       // eslint-disable-next-line no-console
       console.log(`Connecting to room: ${name} at ${url}`);
       // eslint-disable-next-line no-alert
       alert(`Connecting to room "${name}" at ${url}`);
-      envRef.current = createYEnvironment(roomName, url);
+      envRef.current = createYEnvironment(roomName, url, domain);
       setEnv(true);
     } catch (error) {
       // eslint-disable-next-line no-alert
@@ -64,8 +66,8 @@ function ConnectToRoom() {
     if (envRef.current) {
       destroyYEnvironment(envRef.current);
     }
-    handleJoinRoom(roomName, signalingUrl);
-    addDevicesID('/config', hostDeviceId);
+    handleJoinRoom(roomName, signalingUrl, signalingPort);
+    addDevicesID('/config', hostDeviceId, signalingUrl, hostPort, filePath);
     const yarray = envRef?.current?.ydoc.getArray('IDs');
     yarray?.push([deviceID]);
   };
@@ -117,6 +119,7 @@ function ConnectToRoom() {
               <Input
                 id="folder"
                 value={filePath}
+                onChange={(e) => setFilePath(e.target.value)}
                 placeholder="Folder Path"
                 readOnly
                 className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
@@ -125,7 +128,7 @@ function ConnectToRoom() {
 
             <div>
               <Label className="block text-sm font-medium mb-2">
-                Signaling Server URL
+                Domain
               </Label>
               <Input
                 type="text"
@@ -134,9 +137,39 @@ function ConnectToRoom() {
                 placeholder="ws://192.168.1.100:4444"
                 className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
               />
+            </div>
+
+            <div>
+              <Label className="block text-sm font-medium mb-2">
+                Port
+              </Label>
+              <Input
+                type="text"
+                value={signalingPort}
+                onChange={(e) => setSignalingPort(e.target.value)}
+                placeholder="4444"
+                className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+              />
               <p className="text-xs text-gray-400 mt-1">
                 Enter the IP address and port of the signaling server (default
                 port: 4444)
+              </p>
+            </div>
+
+            <div>
+              <Label className="block text-sm font-medium mb-2">
+                Port
+              </Label>
+              <Input
+                type="text"
+                value={hostPort}
+                onChange={(e) => setHostPort(e.target.value)}
+                placeholder="22000"
+                className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Enter the port of the host file syncing server (default
+                port: 22000)
               </p>
             </div>
 

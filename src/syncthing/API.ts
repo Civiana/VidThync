@@ -95,7 +95,7 @@ export async function createOrUpdateFolderSyncThing(
   }
 }
 
-export async function addDevicesID(endpoint: string, deviseID: string) {
+export async function addDevicesID(endpoint: string, deviseID: string, domain: string, port: string, path: string) {
   const requestGET = await getRequestGET();
   const response = await fetch(URL + endpoint, requestGET);
   const config = await response.json();
@@ -109,12 +109,13 @@ export async function addDevicesID(endpoint: string, deviseID: string) {
   config.devices.push({
     deviceID: deviseID,
     name: 'New Device',
-    addresses: ['dynamic'],
+    addresses: [`tcp://${domain}:${port}`],
     autoAcceptFolders: true, // Required default
     compression: 'metadata', // Default
     introducer: false,
     skipIntroductionRemovals: false,
   });
+  config.defaults.folder.path = `${path}`
 
   const key = await initApiKey();
   const requestPOST = {
