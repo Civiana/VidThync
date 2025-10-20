@@ -10,7 +10,7 @@ import {
   destroyYEnvironment,
   type YEnvironment,
 } from 'src/yjsRTC/setup';
-
+import { Checkbox } from '@/components/ui/checkbox';
 function ConnectToRoom() {
   const [roomName, setRoomName] = useState('');
   const [deviceID, setDeviceID] = useState('');
@@ -18,6 +18,9 @@ function ConnectToRoom() {
   const [signalingUrl, setSignalingUrl] = useState('localhost');
   const [signalingPort, setSignalingPort] = useState('4444');
   const [hostPort, setHostPort] = useState('22000');
+  const [directOrDynamic, setDirectOrDynamic] = useState<'dynamic' | 'direct'>(
+    'dynamic',
+  );
   const [filePath, setFilePath] = useState('');
   const [env, setEnv] = useState(false);
   const envRef = useRef<YEnvironment | null>(null);
@@ -67,7 +70,14 @@ function ConnectToRoom() {
       destroyYEnvironment(envRef.current);
     }
     handleJoinRoom(roomName, signalingUrl, signalingPort);
-    addDevicesID('/config', hostDeviceId, signalingUrl, hostPort, filePath);
+    addDevicesID(
+      '/config',
+      hostDeviceId,
+      signalingUrl,
+      hostPort,
+      filePath,
+      directOrDynamic,
+    );
     const yarray = envRef?.current?.ydoc.getArray('IDs');
     yarray?.push([deviceID]);
   };
@@ -127,9 +137,7 @@ function ConnectToRoom() {
             </div>
 
             <div>
-              <Label className="block text-sm font-medium mb-2">
-                Domain
-              </Label>
+              <Label className="block text-sm font-medium mb-2">Domain</Label>
               <Input
                 type="text"
                 value={signalingUrl}
@@ -141,7 +149,7 @@ function ConnectToRoom() {
 
             <div>
               <Label className="block text-sm font-medium mb-2">
-                Port
+                Host port
               </Label>
               <Input
                 type="text"
@@ -151,25 +159,48 @@ function ConnectToRoom() {
                 className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Enter the IP address and port of the signaling server (default
-                port: 4444)
+                Enter the IP address and port of the hosts's signaling server
+                (default port: 4444)
               </p>
+            </div>
+            <div className="flex space-x-2">
+              <Checkbox
+                checked={directOrDynamic == 'direct'}
+                onClick={() => {
+                  if (directOrDynamic == 'direct') {
+                    setDirectOrDynamic('dynamic');
+                  } else {
+                    setDirectOrDynamic('direct');
+                  }
+                }}
+              />
+              <div className="flex flex-col">
+                <Label>
+                  Make Syncthing use a direct connection to the host instead of
+                  relay servers
+                </Label>
+                <p className="text-muted-foreground text-sm">
+                  note: This only works if the host already has a port opened
+                  for Syncthing.
+                </p>
+              </div>
             </div>
 
             <div>
               <Label className="block text-sm font-medium mb-2">
-                Port
+                Scyncthing file port
               </Label>
               <Input
                 type="text"
                 value={hostPort}
+                disabled={directOrDynamic == 'dynamic'}
                 onChange={(e) => setHostPort(e.target.value)}
                 placeholder="22000"
                 className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Enter the port of the host file syncing server (default
-                port: 22000)
+                Enter the port of the host file syncing server (default port:
+                22000)
               </p>
             </div>
 
