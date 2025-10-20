@@ -3,14 +3,14 @@ import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import { useNavigate } from 'react-router';
 import 'tailwindcss/index.css';
 import './App.css';
-
+import CreateRoom from 'src/screens/CreateRoom';
 import { Button } from '@/components/ui/button';
-import Rooms from 'src/screens/Rooms';
 import { Input } from '@/components/ui/input';
 import {
   saveSyncthingApiKey,
   loadSyncthingApiKey,
 } from 'src/utils/apiKeyStorage';
+import ConnectToRoom from '../screens/ConnectToRoom';
 
 function Hello() {
   const navigate = useNavigate();
@@ -61,13 +61,23 @@ function Hello() {
       />
       <Button
         onClick={() => {
-          navigate('/room');
+          navigate('/connectRoom');
         }}
         disabled={syncThingApi === ''}
         variant="outline"
         className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
       >
-        start to connect to a room
+        Connect to Room
+      </Button>
+      <Button
+        onClick={() => {
+          navigate('/createRoom');
+        }}
+        disabled={syncThingApi === ''}
+        variant="outline"
+        className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
+      >
+        Create a Room (Host)
       </Button>
     </div>
   );
@@ -114,10 +124,18 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Hello />} />
         <Route
-          path="/room"
+          path="/createRoom"
           element={
             <ProtectedRoute>
-              <Rooms />
+              <CreateRoom />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/connectRoom"
+          element={
+            <ProtectedRoute>
+              <ConnectToRoom />
             </ProtectedRoute>
           }
         />

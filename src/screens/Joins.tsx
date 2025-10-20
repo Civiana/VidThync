@@ -10,7 +10,7 @@ interface Devices {
 
 type props = {
   ydoc: Y.Doc;
-  roomName: string
+  roomName: string;
 };
 
 function Joins({ ydoc, roomName }: props) {
@@ -29,7 +29,7 @@ function Joins({ ydoc, roomName }: props) {
       newDeviceArr.unobserve(observer);
     };
   }, []);
-  
+
   console.log(deviceArr, 'device array');
   useEffect(() => {
     async function fetchDevices() {
