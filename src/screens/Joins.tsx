@@ -29,8 +29,8 @@ function Joins({ ydoc, roomName }: props) {
       newDeviceArr.unobserve(observer);
     };
   }, []);
+  console.log('deviceArr', deviceArr);
 
-  console.log(deviceArr, 'device array');
   useEffect(() => {
     async function fetchDevices() {
       const response = await userJoinRequest();
@@ -44,7 +44,7 @@ function Joins({ ydoc, roomName }: props) {
     }
 
     fetchDevices();
-  }, [recheck]);
+  }, [deviceArr]);
 
   return (
     <div>
@@ -53,22 +53,23 @@ function Joins({ ydoc, roomName }: props) {
         {devices.map((device) => (
           <li key={device.id} className="group">
             {device.name} ({device.id})
-            <button
+            <Button
               onClick={() => acceptUsers(device.id, device.name, roomName)}
               className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
             >
               Accept
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
-      <Button
+      {/*<Button
         onClick={() => {
+          // handleAddArray();
           setRecheck(!recheck);
         }}
       >
         RECHECK
-      </Button>
+      </Button>*/}
     </div>
   );
 }
