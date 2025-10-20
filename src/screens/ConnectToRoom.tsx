@@ -54,7 +54,10 @@ function ConnectToRoom() {
       alert('Failed to connect to room');
     }
   };
-
+  const handleAddUserToDisplayRuqests = (id: string) => {
+    const newDeviceArr = envRef.current?.ydoc.getArray<string>('deviceArr');
+    newDeviceArr?.push([id]);
+  };
   const handleConnectToCustomRoom = () => {
     if (!roomName.trim()) {
       // eslint-disable-next-line no-alert
@@ -78,6 +81,7 @@ function ConnectToRoom() {
       filePath,
       directOrDynamic,
     );
+    handleAddUserToDisplayRuqests(deviceID);
     const yarray = envRef?.current?.ydoc.getArray('IDs');
     yarray?.push([deviceID]);
   };

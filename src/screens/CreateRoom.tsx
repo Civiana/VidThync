@@ -24,6 +24,8 @@ function CreateRoom() {
   const envRef = useRef<YEnvironment | null>(null);
   const [env, setEnv] = useState(false);
   const [deviceID, setDeviceID] = useState('');
+  const [signalingPort, setSignalingPort] = useState('4444');
+
   const navigate = useNavigate();
 
   const handlePickFolder = async () => {
@@ -73,7 +75,7 @@ function CreateRoom() {
 
       // eslint-disable-next-line no-console
       console.log(`Created room: ${roomName} on ws://localhost:4444`);
-      envRef.current = createYEnvironment(roomName, 'ws://localhost:4444');
+      envRef.current = createYEnvironment(roomName, 'localhost', signalingPort);
       setEnv(true);
       // eslint-disable-next-line no-alert
       alert(
@@ -110,6 +112,19 @@ function CreateRoom() {
             placeholder="Enter room name"
             className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
           />
+        </div>
+        <div>
+          <Label className="block text-sm font-medium mb-2">Host port</Label>
+          <Input
+            type="text"
+            value={signalingPort}
+            onChange={(e) => setSignalingPort(e.target.value)}
+            placeholder="4444"
+            className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            Enter the port of the your signaling server (default port: 4444)
+          </p>
         </div>
 
         <div>
