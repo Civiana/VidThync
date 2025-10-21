@@ -192,7 +192,7 @@ function ConnectToRoom() {
 
             <div>
               <Label className="block text-sm font-medium mb-2">
-                Scyncthing file port
+                Syncthing file port
               </Label>
               <Input
                 type="text"
