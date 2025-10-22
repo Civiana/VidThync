@@ -1,6 +1,8 @@
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { WebrtcProvider } from 'y-webrtc';
+  import { pauseFolder } from 'src/syncthing/API';
+
 
 export type ConnectionStatus =
   | 'disconnected'
@@ -285,6 +287,8 @@ class YjsConnectionManager {
   private async cleanup(): Promise<void> {
     // eslint-disable-next-line no-console
     console.log('[YjsConnectionManager] Cleaning up resources...');
+    pauseFolder(this.currentState.roomName ?? "")
+
 
     // Destroy WebRTC provider
     if (this.webrtc) {

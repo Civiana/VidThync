@@ -269,3 +269,26 @@ export async function addUserToFolder(deviceNo: string, folderName: string) {
     console.error(error);
   }
 }
+
+export async function pauseFolder(folderName: string){
+  const requestGET = await getRequestGET();
+  const response = await fetch(URL + '/config', requestGET)
+  const config = await response.json();
+  const folderIndex = config.folders.findIndex((x: any) => x.label == folderName)
+  if (config.folders[folderIndex].paused == false){
+    config.folders[folderIndex].paused = true
+  }
+  else {
+    alert('folder already paused')
+  }
+  const key = await initApiKey();
+  const requestPOST = {
+    method: 'PUT',
+    headers: {
+      'X-API-Key': key || '',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
+  };
+  const res = await fetch(URL + '/config', requestPOST)
+}
