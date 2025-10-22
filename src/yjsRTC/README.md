@@ -160,6 +160,65 @@ function MyComponent() {
 }
 ```
 
+#### useYText Hook
+
+Observe and manipulate a YJS Text with React state:
+
+```typescript
+import { useYText } from 'src/yjsRTC/YjsContext';
+
+function MyComponent() {
+  const { text, onChange, insert, delete: deleteText, format, toDelta, setValue } = useYText('my-text');
+
+  // Method 1: Use the built-in onChange handler (recommended)
+  return (
+    <div>
+      <input 
+        type="text"
+        value={text} 
+        onChange={onChange} // Works automatically with React inputs!
+        placeholder="Type here..."
+      />
+      <textarea
+        value={text}
+        onChange={onChange} // Also works with textareas!
+        placeholder="Collaborative text..."
+      />
+    </div>
+  );
+}
+
+// Method 2: Manual manipulation
+function AdvancedComponent() {
+  const { text, insert, delete: deleteText, format, toDelta, setValue } = useYText('my-text');
+
+  const handleBold = () => {
+    // Format characters 0-5 as bold
+    format(0, 5, { bold: true });
+  };
+
+  const handleInsert = () => {
+    // Insert text at position 0
+    insert(0, 'Hello ');
+  };
+
+  const handleClear = () => {
+    // Replace entire text content
+    setValue('');
+  };
+
+  return (
+    <div>
+      <p>{text}</p>
+      <button onClick={handleInsert}>Insert</button>
+      <button onClick={handleBold}>Make Bold</button>
+      <button onClick={handleClear}>Clear</button>
+      <pre>{JSON.stringify(toDelta(), null, 2)}</pre>
+    </div>
+  );
+}
+```
+
 ## 📊 Connection State
 
 The connection state includes:
@@ -385,6 +444,127 @@ function ProtectedComponent() {
   }
 
   return <div>Connected! Do your thing...</div>;
+}
+```
+
+### Example 4: Collaborative Text Editor (Simple)
+
+```typescript
+function CollaborativeEditor() {
+  const { text, onChange } = useYText('document');
+
+  // That's it! The onChange handler does all the work
+  return (
+    <div>
+      <h3>Collaborative Document</h3>
+      <textarea 
+        value={text} 
+        onChange={onChange} // Automatically syncs with other users!
+        placeholder="Start typing... changes sync in real-time"
+        rows={10}
+        cols={50}
+      />
+      <p className="text-sm text-gray-500">
+        Open this on another device to see live collaboration
+      </p>
+    </div>
+  );
+}
+```
+
+### Example 5: Rich Text Editor with Formatting
+
+```typescript
+function RichTextEditor() {
+  const { text, onChange, format, toDelta, setValue } = useYText('rich-document');
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
+
+  const handleSelect = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setSelection({
+      start: e.target.selectionStart,
+      end: e.target.selectionEnd,
+    });
+  };
+
+  const applyFormat = (formatType: string) => {
+    if (selection.end > selection.start) {
+      format(selection.start, selection.end - selection.start, { [formatType]: true });
+    }
+  };
+
+  const handleClear = () => {
+    setValue('');
+  };
+
+  return (
+    <div>
+      <div className="toolbar">
+        <button onClick={() => applyFormat('bold')}>Bold</button>
+        <button onClick={() => applyFormat('italic')}>Italic</button>
+        <button onClick={() => applyFormat('underline')}>Underline</button>
+        <button onClick={handleClear}>Clear All</button>
+      </div>
+      <textarea 
+        value={text} 
+        onChange={onChange}
+        onSelect={handleSelect}
+        placeholder="Select text and apply formatting..."
+        rows={10}
+        cols={50}
+      />
+      <div className="preview">
+        <h4>Delta (with formatting):</h4>
+        <pre>{JSON.stringify(toDelta(), null, 2)}</pre>
+      </div>
+    </div>
+  );
+}
+```
+
+### Example 6: Chat Application
+
+```typescript
+function ChatInput() {
+  const { text, onChange, setValue } = useYText('chat-input');
+  const messages = useYArray<string>('messages');
+  const ydoc = useYDoc();
+
+  const handleSend = () => {
+    if (text.trim()) {
+      // Add message to shared array
+      const messagesArray = ydoc?.getArray('messages');
+      messagesArray?.push([text]);
+      // Clear input
+      setValue('');
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <div>
+      <div className="messages">
+        {messages.map((msg, i) => (
+          <div key={i} className="message">{msg}</div>
+        ))}
+      </div>
+      <div className="input-area">
+        <input
+          type="text"
+          value={text}
+          onChange={onChange}
+          onKeyPress={handleKeyPress}
+          placeholder="Type a message..."
+        />
+        <button onClick={handleSend}>Send</button>
+      </div>
+    </div>
+  );
 }
 ```
 

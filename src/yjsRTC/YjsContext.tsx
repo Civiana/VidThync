@@ -138,6 +138,7 @@ export const useYDoc = (): Y.Doc | null => {
 /**
  * Hook to observe a YJS shared type
  */
+
 export const useYMap = <T extends Record<string, any>>(mapName: string): T => {
   const ydoc = useYDoc();
   const [data, setData] = useState<T>({} as T);
@@ -203,4 +204,193 @@ export const useYArray = <T,>(arrayName: string): T[] => {
   }, [ydoc, arrayName]);
 
   return data;
+};
+
+/**
+ * Hook to observe a YJS Text type
+ * Returns the text content as a string and methods to manipulate it
+ */
+export const useYText = (textName: string) => {
+  const ydoc = useYDoc();
+  const [text, setText] = useState<string>('');
+  const textRef = React.useRef<string>('');
+
+  useEffect(() => {
+    if (!ydoc) {
+      setText('');
+      textRef.current = '';
+      return;
+    }
+
+    const ytext = ydoc.getText(textName);
+
+    const observer = () => {
+      const newText = ytext.toString();
+      setText(newText);
+      textRef.current = newText;
+    };
+
+    // Initial text
+    observer();
+
+    ytext.observe(observer);
+
+    return () => {
+      ytext.unobserve(observer);
+      return undefined;
+    };
+  }, [ydoc, textName]);
+
+  // Memoize the manipulation methods
+  const methods = useMemo(() => {
+    if (!ydoc) {
+      return {
+        insert: () => {},
+        delete: () => {},
+        format: () => {},
+        toDelta: () => [],
+        toString: () => '',
+        onChange: () => {},
+        setValue: () => {},
+      };
+    }
+
+    const ytext = ydoc.getText(textName);
+
+    return {
+      /**
+       * Insert text at a specific position
+       * @param index - Position to insert at
+       * @param content - Text to insert
+       * @param attributes - Optional formatting attributes
+       */
+      insert: (
+        index: number,
+        content: string,
+        attributes?: Record<string, any>,
+      ) => {
+        if (attributes) {
+          ytext.insert(index, content, attributes);
+        } else {
+          ytext.insert(index, content);
+        }
+      },
+
+      /**
+       * Delete text from a specific position
+       * @param index - Starting position
+       * @param length - Number of characters to delete
+       */
+      delete: (index: number, length: number) => {
+        ytext.delete(index, length);
+      },
+
+      /**
+       * Format text in a range
+       * @param index - Starting position
+       * @param length - Number of characters to format
+       * @param attributes - Formatting attributes (e.g., { bold: true })
+       */
+      format: (
+        index: number,
+        length: number,
+        attributes: Record<string, any>,
+      ) => {
+        ytext.format(index, length, attributes);
+      },
+
+      /**
+       * Get Delta representation of the text
+       */
+      toDelta: () => ytext.toDelta(),
+
+      /**
+       * Get string representation of the text
+       */
+      toString: () => ytext.toString(),
+
+      /**
+       * React-friendly onChange handler for input/textarea elements
+       * Use this with: <input value={text} onChange={onChange} />
+       */
+      onChange: (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+      ) => {
+        const newValue = e.target.value;
+        const oldValue = textRef.current;
+
+        if (newValue === oldValue) return;
+
+        // Calculate the difference and apply minimal changes
+        if (newValue.length > oldValue.length) {
+          // Text was inserted
+          let insertPos = 0;
+          // Find where the insertion happened
+          for (let i = 0; i < oldValue.length; i++) {
+            if (oldValue[i] !== newValue[i]) {
+              insertPos = i;
+              break;
+            }
+          }
+          // If all existing chars match, insertion is at the end
+          if (
+            insertPos === 0 &&
+            oldValue.length > 0 &&
+            oldValue[0] === newValue[0]
+          ) {
+            insertPos = oldValue.length;
+          }
+          const insertedText = newValue.slice(
+            insertPos,
+            insertPos + (newValue.length - oldValue.length),
+          );
+          ytext.insert(insertPos, insertedText);
+        } else if (newValue.length < oldValue.length) {
+          // Text was deleted
+          let deletePos = 0;
+          // Find where the deletion happened
+          for (let i = 0; i < newValue.length; i++) {
+            if (oldValue[i] !== newValue[i]) {
+              deletePos = i;
+              break;
+            }
+          }
+          // If all remaining chars match, deletion is at the end
+          if (
+            deletePos === 0 &&
+            newValue.length > 0 &&
+            oldValue[0] === newValue[0]
+          ) {
+            deletePos = newValue.length;
+          }
+          const deleteCount = oldValue.length - newValue.length;
+          ytext.delete(deletePos, deleteCount);
+        } else {
+          // Text was replaced (same length but different content)
+          // Clear and reinsert
+          ytext.delete(0, oldValue.length);
+          ytext.insert(0, newValue);
+        }
+      },
+
+      /**
+       * Set the entire text content (replaces all text)
+       * @param newText - The new text content
+       */
+      setValue: (newText: string) => {
+        const currentLength = ytext.length;
+        if (currentLength > 0) {
+          ytext.delete(0, currentLength);
+        }
+        if (newText.length > 0) {
+          ytext.insert(0, newText);
+        }
+      },
+    };
+  }, [ydoc, textName]);
+
+  return {
+    text,
+    ...methods,
+  };
 };

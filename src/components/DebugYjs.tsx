@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useYjs } from '../yjsRTC/YjsContext';
-
+import { useYText } from '../yjsRTC/YjsContext';
+import { Input } from '@/components/ui/input';
 function DebugYjs() {
   const { state, disconnect, reconnect, isConnected } = useYjs();
   const [isMinimized, setIsMinimized] = useState(false);
@@ -9,6 +10,8 @@ function DebugYjs() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const dragRef = useRef<HTMLDivElement>(null);
+
+  const { text, insert, delete: deleteText, onChange } = useYText('test-text');
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -264,6 +267,13 @@ function DebugYjs() {
           </div>
         )}
       </div>
+      {isConnected && state.status !== 'connecting' && (
+        <Input
+          className="text-white"
+          value={text.toString()}
+          onChange={onChange}
+        ></Input>
+      )}
 
       {/* Info Footer */}
       <div className="mt-3 pt-3 border-t border-gray-700">

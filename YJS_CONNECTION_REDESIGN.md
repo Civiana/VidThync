@@ -347,6 +347,38 @@ const items = useYArray<string>('array-name');
 // Returns empty array when disconnected
 ```
 
+### useYText(textName)
+
+```typescript
+const { 
+  text, 
+  onChange, 
+  setValue,
+  insert, 
+  delete: deleteText, 
+  format, 
+  toDelta, 
+  toString 
+} = useYText('text-name');
+
+// text: string - Current text content (auto-updates)
+// onChange: (e) => void - React onChange handler for input/textarea
+// setValue: (text) => void - Replace entire text content
+// insert(index, content, attributes?) - Insert text at position
+// delete(index, length) - Delete text from position
+// format(index, length, attributes) - Format text range
+// toDelta() - Get Delta representation
+// toString() - Get string representation
+```
+
+**Example - Simple Usage:**
+```typescript
+function MyInput() {
+  const { text, onChange } = useYText('my-input');
+  return <input value={text} onChange={onChange} />;
+}
+```
+
 ## 🎨 Best Practices
 
 ### 1. Always wrap connection calls in try-catch
@@ -386,6 +418,20 @@ const { state } = useYjs();
 // ❌ Avoid
 import { connectionManager } from 'src/yjsRTC/ConnectionManager';
 const state = connectionManager.getState();
+```
+
+### 6. Use useYText for text editing
+
+```typescript
+// Simple input/textarea (recommended)
+const { text, onChange } = useYText('document');
+<input value={text} onChange={onChange} />
+
+// Advanced manipulation
+const { text, insert, format, setValue } = useYText('document');
+insert(0, 'Hello World');
+format(0, 5, { bold: true }); // Make "Hello" bold
+setValue('New content'); // Replace all text
 ```
 
 ## 🎯 What This Solves
