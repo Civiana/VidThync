@@ -100,7 +100,7 @@ function ConnectToRoom() {
 
       // Connect to the room using the connection manager
       await connect({
-        roomName,
+        roomName: `${roomName + hostDeviceId}`,
         signalingUrl,
         signalingPort,
         isHost: false,

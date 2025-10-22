@@ -93,7 +93,7 @@ function CreateRoom() {
 
       // Connect to the room using the connection manager
       await connect({
-        roomName,
+        roomName: `${roomName + deviceID}`,
         signalingUrl: 'localhost',
         signalingPort,
         isHost: true,
