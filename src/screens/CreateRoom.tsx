@@ -74,7 +74,7 @@ function CreateRoom() {
       // Setup Syncthing folder
       await createOrUpdateFolderSyncThing(
         '/config/folders',
-        roomName,
+        `${roomName + deviceID}`,
         filePath,
       );
 
