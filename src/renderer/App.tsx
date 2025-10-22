@@ -11,6 +11,8 @@ import {
   loadSyncthingApiKey,
 } from 'src/utils/apiKeyStorage';
 import ConnectToRoom from '../screens/ConnectToRoom';
+import DebugYjs from '../components/DebugYjs';
+import { YjsProvider } from '../yjsRTC/YjsContext';
 
 function Hello() {
   const navigate = useNavigate();
@@ -120,26 +122,29 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Hello />} />
-        <Route
-          path="/createRoom"
-          element={
-            <ProtectedRoute>
-              <CreateRoom />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/connectRoom"
-          element={
-            <ProtectedRoute>
-              <ConnectToRoom />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </Router>
+    <YjsProvider>
+      <DebugYjs />
+      <Router>
+        <Routes>
+          <Route path="/" element={<Hello />} />
+          <Route
+            path="/createRoom"
+            element={
+              <ProtectedRoute>
+                <CreateRoom />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/connectRoom"
+            element={
+              <ProtectedRoute>
+                <ConnectToRoom />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </YjsProvider>
   );
 }
