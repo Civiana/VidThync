@@ -270,16 +270,17 @@ export async function addUserToFolder(deviceNo: string, folderName: string) {
   }
 }
 
-export async function pauseFolder(folderName: string){
+export async function pauseFolder(folderName: string) {
   const requestGET = await getRequestGET();
-  const response = await fetch(URL + '/config', requestGET)
+  const response = await fetch(URL + '/config', requestGET);
   const config = await response.json();
-  const folderIndex = config.folders.findIndex((x: any) => x.label == folderName)
-  if(config.folders[folderIndex].label == folderName){
-    if (config.folders[folderIndex].paused == false){
-    config.folders[folderIndex].paused = true
-    }
-    else {
+  const folderIndex = config.folders.findIndex(
+    (x: any) => x?.label == folderName,
+  );
+  if (config.folders[folderIndex]?.label == folderName) {
+    if (config.folders[folderIndex]?.paused == false) {
+      config.folders[folderIndex].paused = true;
+    } else {
       return;
     }
   }
@@ -292,23 +293,24 @@ export async function pauseFolder(folderName: string){
     },
     body: JSON.stringify(config),
   };
-  const res = await fetch(URL + '/config', requestPOST)
+  const res = await fetch(URL + '/config', requestPOST);
 }
 
-export async function unPauseFolder(folderName: string){
-const requestGET = await getRequestGET();
-const response = await fetch(URL + '/config', requestGET)
-const config = await response.json();
-const folderIndex = config.folders.findIndex((x: any) => x.label == folderName)
-if(config.folders[folderIndex].label == folderName){
-  if (config.folders[folderIndex].paused == true){
-  config.folders[folderIndex].paused = false
+export async function unPauseFolder(folderName: string) {
+  const requestGET = await getRequestGET();
+  const response = await fetch(URL + '/config', requestGET);
+  const config = await response.json();
+  const folderIndex = config.folders.findIndex(
+    (x: any) => x?.label == folderName,
+  );
+  if (config.folders[folderIndex]?.label == folderName) {
+    if (config.folders[folderIndex]?.paused == true) {
+      config.folders[folderIndex].paused = false;
+    } else {
+      return;
+    }
   }
-  else {
-    return;
-  }
-}
-const key = await initApiKey();
+  const key = await initApiKey();
   const requestPOST = {
     method: 'PUT',
     headers: {
@@ -317,10 +319,10 @@ const key = await initApiKey();
     },
     body: JSON.stringify(config),
   };
-  const res = await fetch(URL + '/config', requestPOST)
+  const res = await fetch(URL + '/config', requestPOST);
 }
 
-export async function dismissPendingDevices(userID: string){
+export async function dismissPendingDevices(userID: string) {
   const key = await initApiKey();
   const requestDEL = {
     method: 'DELETE',
@@ -329,10 +331,13 @@ export async function dismissPendingDevices(userID: string){
       'Content-Type': 'application/json',
     },
   };
-  const response = fetch(URL + `/cluster/pending/devices?device=${userID}`, requestDEL)
+  const response = await fetch(
+    URL + `/cluster/pending/devices?device=${userID}`,
+    requestDEL,
+  );
 }
 
-export async function removeRemoteDevices(userID: string){
+export async function removeRemoteDevices(userID: string) {
   const key = await initApiKey();
   const requestDEL = {
     method: 'DELETE',
@@ -341,5 +346,5 @@ export async function removeRemoteDevices(userID: string){
       'Content-Type': 'application/json',
     },
   };
-  const response = await fetch(URL + `/devices/${userID}`, requestDEL)
+  const response = await fetch(URL + `/devices/${userID}`, requestDEL);
 }

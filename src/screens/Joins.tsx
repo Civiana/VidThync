@@ -1,6 +1,10 @@
 import { Button } from '@/components/ui/button';
 import React, { useState, useEffect } from 'react';
-import { userJoinRequest, acceptUsers, dismissPendingDevices, removeRemoteDevices } from 'src/syncthing/API';
+import {
+  userJoinRequest,
+  acceptUsers,
+  dismissPendingDevices,
+} from 'src/syncthing/API';
 import * as Y from 'yjs';
 
 interface Devices {
@@ -85,7 +89,7 @@ function Joins({ ydoc, roomName }: props) {
             </Button>
             <Button
               onClick={() => {
-                removeRemoteDevices(device.id);
+                dismissPendingDevices(device.id);
                 deleteAcceptedOrRejectedRequest(device.id);
               }}
               className="bg-red-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
