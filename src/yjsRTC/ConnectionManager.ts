@@ -1,7 +1,7 @@
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { WebrtcProvider } from 'y-webrtc';
-  import { pauseFolder } from 'src/syncthing/API';
+  import { pauseFolder, unPauseFolder} from 'src/syncthing/API';
 
 
 export type ConnectionStatus =
@@ -128,7 +128,7 @@ class YjsConnectionManager {
   public async connect(config: ConnectionConfig): Promise<void> {
     // eslint-disable-next-line no-console
     console.log('[YjsConnectionManager] Connect requested:', config);
-
+    unPauseFolder(this.currentState.roomName ?? "")
     // Disconnect from any existing connection first
     if (this.isConnected() || this.currentState.status === 'connecting') {
       // eslint-disable-next-line no-console

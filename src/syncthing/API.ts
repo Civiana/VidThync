@@ -275,11 +275,13 @@ export async function pauseFolder(folderName: string){
   const response = await fetch(URL + '/config', requestGET)
   const config = await response.json();
   const folderIndex = config.folders.findIndex((x: any) => x.label == folderName)
-  if (config.folders[folderIndex].paused == false){
+  if(config.folders[folderIndex].label == folderName){
+    if (config.folders[folderIndex].paused == false){
     config.folders[folderIndex].paused = true
-  }
-  else {
-    alert('folder already paused')
+    }
+    else {
+      return;
+    }
   }
   const key = await initApiKey();
   const requestPOST = {
@@ -291,4 +293,53 @@ export async function pauseFolder(folderName: string){
     body: JSON.stringify(config),
   };
   const res = await fetch(URL + '/config', requestPOST)
+}
+
+export async function unPauseFolder(folderName: string){
+const requestGET = await getRequestGET();
+const response = await fetch(URL + '/config', requestGET)
+const config = await response.json();
+const folderIndex = config.folders.findIndex((x: any) => x.label == folderName)
+if(config.folders[folderIndex].label == folderName){
+  if (config.folders[folderIndex].paused == true){
+  config.folders[folderIndex].paused = false
+  }
+  else {
+    return;
+  }
+}
+const key = await initApiKey();
+  const requestPOST = {
+    method: 'PUT',
+    headers: {
+      'X-API-Key': key || '',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
+  };
+  const res = await fetch(URL + '/config', requestPOST)
+}
+
+export async function dismissPendingDevices(userID: string){
+  const key = await initApiKey();
+  const requestDEL = {
+    method: 'DELETE',
+    headers: {
+      'X-API-Key': key || '',
+      'Content-Type': 'application/json',
+    },
+  };
+  const response = fetch(URL + `/cluster/pending/devices?device=${userID}`, requestDEL)
+}
+
+export async function removeRemoteDevices(userID: string){
+  const key = await initApiKey();
+  const requestDEL = {
+    method: 'DELETE',
+    headers: {
+      'X-API-Key': key || '',
+      'Content-Type': 'application/json',
+    },
+  };
+  const response = await fetch(URL + `/devices/${userID}`, requestDEL)
 }
