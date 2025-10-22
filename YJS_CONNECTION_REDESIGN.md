@@ -419,7 +419,3 @@ The YJS connection system is now:
 **You can now create and connect to rooms without worrying about state management, memory leaks, or crashes!**
 
 ---
-
-**Version:** 2.0.0  
-**Date:** 2024  
-**Status:** ✅ Production Ready
