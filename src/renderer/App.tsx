@@ -10,6 +10,7 @@ import {
   saveSyncthingApiKey,
   loadSyncthingApiKey,
 } from 'src/utils/apiKeyStorage';
+import { fetchDeviceID } from 'src/syncthing/API';
 import ConnectToRoom from '../screens/ConnectToRoom';
 import DebugYjs from '../components/DebugYjs';
 import { YjsProvider } from '../yjsRTC/YjsContext';
@@ -18,6 +19,19 @@ function Hello() {
   const navigate = useNavigate();
   const [syncThingApi, setSyncThingApi] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [deviceID, setDeviceID] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const getDeviceID = async () => {
+    try {
+      const id = await fetchDeviceID();
+      setDeviceID(id);
+      setError(null);
+    } catch (e) {
+      setError(`Error: ${(e as Error).message}`);
+      setDeviceID('');
+    }
+  };
 
   // Load API key from IndexedDB on mount
   useEffect(() => {
@@ -39,9 +53,13 @@ function Hello() {
   // Save API key to IndexedDB whenever it changes
   useEffect(() => {
     if (syncThingApi && !isLoading) {
-      saveSyncthingApiKey(syncThingApi).catch((error) => {
-        console.error('Failed to save API key:', error);
-      });
+      saveSyncthingApiKey(syncThingApi)
+        .catch((e) => {
+          console.error('Failed to save API key:', e);
+        })
+        .then(() => {
+          getDeviceID();
+        });
     }
   }, [syncThingApi, isLoading]);
 
@@ -65,7 +83,7 @@ function Hello() {
         onClick={() => {
           navigate('/connectRoom');
         }}
-        disabled={syncThingApi === ''}
+        disabled={syncThingApi === '' || error !== null}
         variant="outline"
         className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
       >
@@ -75,12 +93,24 @@ function Hello() {
         onClick={() => {
           navigate('/createRoom');
         }}
-        disabled={syncThingApi === ''}
+        disabled={syncThingApi === '' || error !== null}
         variant="outline"
         className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
       >
         Create a Room (Host)
       </Button>
+      {error && (
+        <p className="text-red-500">
+          Could not get your device id from syncthing, either syncthing is not
+          running/installed or the syncthing instance is not reachable at
+          localhost:8384 or you have entered wrong API key. 8384:{error}
+        </p>
+      )}
+      {deviceID && (
+        <p className="text-white">
+          Syncthing is reachable and Your Syncthing Device ID: {deviceID}
+        </p>
+      )}
     </div>
   );
 }

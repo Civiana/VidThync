@@ -25,10 +25,6 @@ export function createYEnvironment(
     signaling: [signalingURL],
   });
 
-  webrtc.on('status', ({ status }) => {
-    console.log('[y-webrtc]', status);
-  });
-
   return { ydoc, idb, webrtc, roomName };
 }
 

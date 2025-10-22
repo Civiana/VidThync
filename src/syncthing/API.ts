@@ -6,9 +6,8 @@ let apiKey: string | null = null;
 
 // Initialize API key from IndexedDB
 async function initApiKey() {
-  if (!apiKey) {
-    apiKey = await loadSyncthingApiKey();
-  }
+  apiKey = await loadSyncthingApiKey();
+
   return apiKey;
 }
 

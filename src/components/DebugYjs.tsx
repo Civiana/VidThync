@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useYjs } from '../yjsRTC/YjsContext';
 import { Button } from '@/components/ui/button';
+import { useYjs } from '../yjsRTC/YjsContext';
 
 function DebugYjs() {
   const { state, disconnect, reconnect, isConnected } = useYjs();
