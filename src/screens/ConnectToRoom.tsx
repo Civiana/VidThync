@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { fetchDeviceID, addDevicesID } from 'src/syncthing/API';
 import { useYjs } from 'src/yjsRTC/YjsContext';
 import { Checkbox } from '@/components/ui/checkbox';
-
+import { useYArray } from 'src/yjsRTC/YjsContext';
+import { removeRemoteDevices } from 'src/syncthing/API';
 function ConnectToRoom() {
   const [roomName, setRoomName] = useState('');
   const [deviceID, setDeviceID] = useState('');
@@ -14,6 +15,7 @@ function ConnectToRoom() {
   const [signalingUrl, setSignalingUrl] = useState('localhost');
   const [signalingPort, setSignalingPort] = useState('4444');
   const [hostPort, setHostPort] = useState('22000');
+  const rejectedArr = useYArray<string>('rejectedArr');
   const [directOrDynamic, setDirectOrDynamic] = useState<'dynamic' | 'direct'>(
     'dynamic',
   );
@@ -137,6 +139,24 @@ function ConnectToRoom() {
       setIsConnecting(false);
     }
   };
+
+  console.log('Rejected Array:', rejectedArr);
+
+  useEffect(() => {
+    if (rejectedArr.length > 0) {
+      rejectedArr.find((id, i) => {
+        if (id === deviceID) {
+          // eslint-disable-next-line no-alert
+          alert('Your connection request was rejected by the host.');
+          const reject = getYDoc();
+          const rejArr = reject?.getArray<string>('rejectedArr');
+          rejArr?.delete(i, 1);
+          removeRemoteDevices(deviceID);
+          // disconnect();
+        }
+      });
+    }
+  }, [rejectedArr]);
 
   const handleDisconnect = async () => {
     try {

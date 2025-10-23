@@ -6,7 +6,8 @@ import {
   dismissPendingDevices,
 } from 'src/syncthing/API';
 import * as Y from 'yjs';
-
+// import { useYArray } from '../yjsRTC/YjsContext';
+import { useYDoc } from '../yjsRTC/YjsContext';
 interface Devices {
   id: string;
   name: string;
@@ -21,6 +22,8 @@ function Joins({ ydoc, roomName }: props) {
   const [devices, setDevices] = useState<Devices[]>([]);
   const [recheck, setRecheck] = useState<boolean>(false);
   const [deviceArr, setDeviceArr] = useState<string[]>([]);
+  // const arrayData = useYArray<string>('rejectedArr');
+  // const arrayDoc = useYDoc();
 
   useEffect(() => {
     const newDeviceArr = ydoc.getArray<string>('deviceArr');
@@ -47,6 +50,11 @@ function Joins({ ydoc, roomName }: props) {
     if (index !== -1) {
       newDeviceArr.delete(index, 1);
     }
+  }
+
+  function addToRejectedArr(deviceId: string) {
+    const rejectedArr = ydoc.getArray<string>('rejectedArr');
+    rejectedArr.push([deviceId]);
   }
 
   useEffect(() => {
@@ -91,6 +99,7 @@ function Joins({ ydoc, roomName }: props) {
               onClick={() => {
                 dismissPendingDevices(device.id);
                 deleteAcceptedOrRejectedRequest(device.id);
+                addToRejectedArr(device.id);
               }}
               className="bg-red-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
             >
