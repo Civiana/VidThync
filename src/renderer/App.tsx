@@ -10,7 +10,7 @@ import {
   saveSyncthingApiKey,
   loadSyncthingApiKey,
 } from 'src/utils/apiKeyStorage';
-import { fetchDeviceID, removeRemoteDevices } from 'src/syncthing/API';
+import { fetchDeviceID,createOrUpdateFolderSyncThing } from 'src/syncthing/API';
 import ConnectToRoom from '../screens/ConnectToRoom';
 import DebugYjs from '../components/DebugYjs';
 import { YjsProvider } from '../yjsRTC/YjsContext';
@@ -112,7 +112,7 @@ function Hello() {
         </p>
       )}
       {/* <Button
-        onClick={() => { removeRemoteDevices('ENCR43C-RXJIIBD-HAKR4XZ-CU2YJU5-FIFA5BH-K6RVGFF-ZM6NP7B-3GSTLA5')
+        onClick={() => { createOrUpdateFolderSyncThing('/config/folders', 'bezo', 'C:/Users/Civ/Desktop/gay/zozo')
         }}
         className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
       >

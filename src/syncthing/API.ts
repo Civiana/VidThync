@@ -44,9 +44,12 @@ export async function createOrUpdateFolderSyncThing(
   label: string,
   filePath: string,
 ) {
+  const requestGET = await getRequestGET();
   const key = await initApiKey();
   const folderID = generateRandomFolderId();
   const device_id = await fetchDeviceID();
+  const res = await fetch(URL + '/config/folders', requestGET)
+  const config = await res.json()
   const folderConfig = {
     id: folderID,
     label: label,
@@ -62,6 +65,14 @@ export async function createOrUpdateFolderSyncThing(
     ignorePerms: false,
     autoNormalize: true,
   };
+  const alreadyExists = config.some(
+    (folder: any) => folder.label === label,
+  );
+  if (alreadyExists) {
+    console.log('Folder already exists');
+    return { success: true, message: 'Folder already exists' };
+  }
+
   const requestPOST = {
     method: 'POST',
     headers: {
