@@ -370,3 +370,20 @@ export async function displayFiles(folderName: string){
   const browse = await fetch(URL + `/db/browse?folder=${folderID}`, requestGET);
   return await browse.json()
 }
+
+export async function syncthingPortChanging(port: number){
+  const requestGET = await getRequestGET();
+  const response = await fetch(URL + '/config', requestGET);
+  const config = await response.json();
+  config.options.listenAddressses = `tcp://:${port}`
+  const key = await initApiKey();
+  const requestPUT = {
+    method: 'PUT',
+    headers: {
+      'X-API-Key': key || '',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config)
+  };
+  const res = await fetch(URL + `/config`, requestPUT);
+}
