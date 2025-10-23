@@ -346,5 +346,5 @@ export async function removeRemoteDevices(userID: string) {
       'Content-Type': 'application/json',
     },
   };
-  const response = await fetch(URL + `/devices/${userID}`, requestDEL);
+  const response = await fetch(URL + `/config/devices/${userID}`, requestDEL);
 }

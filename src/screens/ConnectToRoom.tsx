@@ -151,7 +151,7 @@ function ConnectToRoom() {
           const reject = getYDoc();
           const rejArr = reject?.getArray<string>('rejectedArr');
           rejArr?.delete(i, 1);
-          // removeRemoteDevices(deviceID); it did not work zaki it gives a 404 error and does not delete from syncthing
+          removeRemoteDevices(deviceID);
           disconnect();
         }
       });
