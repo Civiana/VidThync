@@ -151,8 +151,8 @@ function ConnectToRoom() {
           const reject = getYDoc();
           const rejArr = reject?.getArray<string>('rejectedArr');
           rejArr?.delete(i, 1);
-          removeRemoteDevices(deviceID);
-          // disconnect();
+          removeRemoteDevices(hostDeviceId);
+          disconnect();
         }
       });
     }
