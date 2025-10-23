@@ -7,7 +7,7 @@ declare global {
     electron: ElectronHandler;
     electronAPI: {
       selectFolder: () => Promise<string | null>;
-      startServer: () => void;
+      startServer: (port: string) => void;
       syncThingApiKey: string;
       syncthingFetch: (
         url: string,

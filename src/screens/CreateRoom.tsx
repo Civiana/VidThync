@@ -17,7 +17,7 @@ function CreateRoom() {
   const [customDescription, setCustomDescription] = useState('');
   const [filePath, setFilePath] = useState('');
   const [deviceID, setDeviceID] = useState('');
-  const [signalingPort, setSignalingPort] = useState('4444');
+  const [signalingPort, setSignalingPort] = useState('49999');
 
   const navigate = useNavigate();
   const { connect, disconnect, state, isConnected, getYDoc } = useYjs();
@@ -57,6 +57,14 @@ function CreateRoom() {
       return;
     }
 
+    // Validate port number
+    const portNum = parseInt(signalingPort, 10);
+    if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+      // eslint-disable-next-line no-alert
+      alert('Please enter a valid port number (1-65535)');
+      return;
+    }
+
     // Check if already connected to a different room
     if (isConnected && state.roomName !== roomName) {
       // eslint-disable-next-line no-alert
@@ -79,8 +87,8 @@ function CreateRoom() {
         filePath,
       );
 
-      // Start the signaling server
-      window.electronAPI.startServer();
+      // Start the signaling server with the selected port
+      window.electronAPI.startServer(signalingPort);
 
       // eslint-disable-next-line no-console
       console.log(
@@ -184,15 +192,18 @@ function CreateRoom() {
         <div>
           <Label className="block text-sm font-medium mb-2">Host port</Label>
           <Input
-            type="text"
+            type="number"
+            min="1"
+            max="65535"
             value={signalingPort}
             onChange={(e) => setSignalingPort(e.target.value)}
-            placeholder="4444"
+            placeholder="49999"
             disabled={isServerStarting}
             className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
           />
           <p className="text-xs text-gray-400 mt-1">
-            Enter the port of your signaling server (default port: 4444)
+            Enter the port of your signaling server (default: 4444, range:
+            1-65535)
           </p>
         </div>
 
@@ -262,12 +273,11 @@ function CreateRoom() {
           })()}
         </Button>
 
-          
         {/* Show Joins component when connected */}
         {isConnected && getYDoc() !== null && (
           <div className="mt-6">
             <Joins ydoc={getYDoc()!} roomName={`${roomName + deviceID}`} />
-            <FilesDisplay roomName={`${roomName + deviceID}`}/>
+            <FilesDisplay roomName={`${roomName + deviceID}`} />
           </div>
         )}
       </div>

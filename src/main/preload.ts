@@ -25,7 +25,8 @@ const electronHandler = {
 };
 contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
-  startServer: () => ipcRenderer.send('start-signaling-server'),
+  startServer: (port: string) =>
+    ipcRenderer.send('start-signaling-server', port),
   syncthingFetch: (url: string, options?: Record<string, any>) =>
     ipcRenderer.invoke('syncthing:fetch', url, options),
 });

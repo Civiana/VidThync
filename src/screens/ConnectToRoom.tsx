@@ -14,7 +14,7 @@ function ConnectToRoom() {
   const [deviceID, setDeviceID] = useState('');
   const [hostDeviceId, setHostDeviceId] = useState('');
   const [signalingUrl, setSignalingUrl] = useState('localhost');
-  const [signalingPort, setSignalingPort] = useState('4444');
+  const [signalingPort, setSignalingPort] = useState('49999');
   const [hostPort, setHostPort] = useState('22000');
   const rejectedArr = useYArray<string>('rejectedArr');
   const [directOrDynamic, setDirectOrDynamic] = useState<'dynamic' | 'direct'>(
@@ -285,13 +285,13 @@ function ConnectToRoom() {
                 type="text"
                 value={signalingPort}
                 onChange={(e) => setSignalingPort(e.target.value)}
-                placeholder="4444"
+                placeholder="49999"
                 disabled={isConnecting}
                 className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
               />
               <p className="text-xs text-gray-400 mt-1">
                 Enter the port of the host&apos;s signaling server (default
-                port: 4444)
+                port: 49999)
               </p>
             </div>
 
@@ -378,16 +378,16 @@ function ConnectToRoom() {
 
             {isConnected && (
               <>
-              <Button
-                onClick={handleDisconnect}
-                variant="destructive"
-                className="w-full"
-                size="lg"
-              >
-                Disconnect from Room
-              </Button>
-              
-              <FilesDisplay roomName={`${roomName + hostDeviceId}`}/>
+                <Button
+                  onClick={handleDisconnect}
+                  variant="destructive"
+                  className="w-full"
+                  size="lg"
+                >
+                  Disconnect from Room
+                </Button>
+
+                <FilesDisplay roomName={`${roomName + hostDeviceId}`} />
               </>
             )}
           </div>

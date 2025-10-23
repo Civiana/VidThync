@@ -144,8 +144,8 @@ app.on('window-all-closed', () => {
   }
 });
 
-ipcMain.on('start-signaling-server', () => {
-  startSignalingServer();
+ipcMain.on('start-signaling-server', (event, port: string) => {
+  startSignalingServer(port);
 });
 
 // Handle Syncthing API requests from renderer
