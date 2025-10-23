@@ -128,10 +128,7 @@ class YjsConnectionManager {
   public async connect(config: ConnectionConfig): Promise<void> {
     // eslint-disable-next-line no-console
     console.log('[YjsConnectionManager] Connect requested:', config);
-    if(!this.currentState.isHost){
       unPauseFolder(this.currentState.roomName ?? "")
-
-    }
     // Disconnect from any existing connection first
     if (this.isConnected() || this.currentState.status === 'connecting') {
       // eslint-disable-next-line no-console
@@ -290,10 +287,9 @@ class YjsConnectionManager {
   private async cleanup(): Promise<void> {
     // eslint-disable-next-line no-console
     console.log('[YjsConnectionManager] Cleaning up resources...');
-    if(!this.currentState.isHost){
+
       pauseFolder(this.currentState.roomName ?? "")
 
-    }
 
 
     // Destroy WebRTC provider
