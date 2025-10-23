@@ -8,6 +8,7 @@ import { useYjs } from 'src/yjsRTC/YjsContext';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useYArray } from 'src/yjsRTC/YjsContext';
 import { removeRemoteDevices } from 'src/syncthing/API';
+import FilesDisplay from '../components/FilesDisplay';
 function ConnectToRoom() {
   const [roomName, setRoomName] = useState('');
   const [deviceID, setDeviceID] = useState('');
@@ -376,6 +377,7 @@ function ConnectToRoom() {
             </Button>
 
             {isConnected && (
+              <>
               <Button
                 onClick={handleDisconnect}
                 variant="destructive"
@@ -384,6 +386,9 @@ function ConnectToRoom() {
               >
                 Disconnect from Room
               </Button>
+              
+              <FilesDisplay roomName={`${roomName + hostDeviceId}`}/>
+              </>
             )}
           </div>
         </div>

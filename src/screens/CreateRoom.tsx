@@ -9,6 +9,7 @@ import {
 } from 'src/syncthing/API';
 import { useYjs } from 'src/yjsRTC/YjsContext';
 import Joins from './Joins';
+import FilesDisplay from '../components/FilesDisplay';
 
 function CreateRoom() {
   const [roomName, setRoomName] = useState('');
@@ -261,10 +262,12 @@ function CreateRoom() {
           })()}
         </Button>
 
+          
         {/* Show Joins component when connected */}
         {isConnected && getYDoc() !== null && (
           <div className="mt-6">
-            <Joins ydoc={getYDoc()!} roomName={state.roomName || roomName} />
+            <Joins ydoc={getYDoc()!} roomName={`${roomName + deviceID}`} />
+            <FilesDisplay roomName={`${roomName + deviceID}`}/>
           </div>
         )}
       </div>

@@ -12,8 +12,10 @@ import {
 } from 'src/utils/apiKeyStorage';
 import { fetchDeviceID,createOrUpdateFolderSyncThing } from 'src/syncthing/API';
 import ConnectToRoom from '../screens/ConnectToRoom';
+import FilesDisplay from '../components/FilesDisplay';
 import DebugYjs from '../components/DebugYjs';
 import { YjsProvider } from '../yjsRTC/YjsContext';
+import { Files } from 'lucide-react';
 
 function Hello() {
   const navigate = useNavigate();
@@ -112,7 +114,7 @@ function Hello() {
         </p>
       )}
       {/* <Button
-        onClick={() => { createOrUpdateFolderSyncThing('/config/folders', 'bezo', 'C:/Users/Civ/Desktop/gay/zozo')
+        onClick={() => {
         }}
         className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
       >
@@ -179,6 +181,7 @@ export default function App() {
                 <ConnectToRoom />
               </ProtectedRoute>
             }
+            
           />
         </Routes>
       </Router>

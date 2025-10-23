@@ -359,3 +359,14 @@ export async function removeRemoteDevices(userID: string) {
   };
   const response = await fetch(URL + `/config/devices/${userID}`, requestDEL);
 }
+
+
+export async function displayFiles(folderName: string){
+  const requestGET = await getRequestGET();
+  const response = await fetch(URL + '/config/folders', requestGET);
+  const config = await response.json();
+  const folderObj = config.find((x: any) => x.label === folderName);
+  const folderID = folderObj?.id
+  const browse = await fetch(URL + `/db/browse?folder=${folderID}`, requestGET);
+  return await browse.json()
+}
