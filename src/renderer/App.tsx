@@ -101,6 +101,38 @@ function Hello() {
       >
         Create a Room (Host)
       </Button>
+      <Button
+    onClick={async () => {
+        const result = await window.electronAPI.startSyncplay();
+        console.log(result);
+    }}
+>
+    Syncplay Test
+</Button>
+<Button
+    onClick={async () => {
+        const result = await window.electronAPI.playPause();
+        console.log(result);
+    }}
+>
+    Syncplay Play/Pause
+</Button>
+<Button
+    onClick={async () => {
+        const result = await window.electronAPI.stopSyncplay();
+        console.log(result);
+    }}
+>
+    Syncplay stop
+</Button>
+<Button
+    onClick={async () => {
+        const result = await window.electronAPI.addVideo('C:\\Users\\Civ\\Downloads\\The.Mentalist.S01.1080p.BluRay.x265-KONTRAST\\The.Mentalist.S01E06.1080p.BluRay.x265-KONTRAST.mkv');
+        console.log(result);
+    }}
+>
+    Syncplay Add Video
+</Button>
       {error && (
         <p className="text-red-500">
           Could not get your device id from syncthing, either syncthing is not

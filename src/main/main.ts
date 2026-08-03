@@ -14,6 +14,9 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+import { SyncplayManager } from "./SyncplayManager";
+
+const syncplay = new SyncplayManager();
 
 require('dotenv').config();
 // main.js (Electron entry point)
@@ -177,3 +180,23 @@ app
     });
   })
   .catch(console.log);
+
+ipcMain.handle("syncplay:start", () => {
+    return syncplay.start(
+        "syncplay.pl:8996",
+        "Civ",
+        "TestRoom"
+    );
+});
+
+ipcMain.handle("syncplay:stop", () => {
+    return syncplay.stop();
+});
+
+ipcMain.handle("syncplay:play", () => {
+    return syncplay.playPause();
+});
+
+ipcMain.handle("syncplay:addVideo", (_event, path: string) => {
+    return syncplay.addVideo(path);
+});

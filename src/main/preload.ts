@@ -29,6 +29,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('start-signaling-server', port),
   syncthingFetch: (url: string, options?: Record<string, any>) =>
     ipcRenderer.invoke('syncthing:fetch', url, options),
+  startSyncplay: () =>
+    ipcRenderer.invoke("syncplay:start"),
+  playPause: () => ipcRenderer.invoke("syncplay:play"),
+
+  addVideo: (url: string) =>
+    ipcRenderer.invoke("syncplay:addVideo", url),
+
+  stopSyncplay: () =>
+    ipcRenderer.invoke("syncplay:stop"),
 });
 
 contextBridge.exposeInMainWorld('electron', electronHandler);
