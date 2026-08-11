@@ -8,6 +8,8 @@ import {
   addDevicesID,
   createOrUpdateFolderSyncThing,
   acceptPendingFolders,
+  pauseFolder,
+  unPauseFolder,
 } from 'src/syncthing/API';
 import { useYjs } from 'src/yjsRTC/YjsContext';
 import type { StoredRoomConfig } from 'src/yjsRTC/ConnectionManager';
@@ -162,6 +164,9 @@ function ConnectToRoom() {
       // Auto-accept any pending folder invitations
       await acceptPendingFolders(roomKey);
 
+      // Unpause folder when joining
+      await unPauseFolder(roomKey);
+
       // eslint-disable-next-line no-console
       console.log('[ConnectToRoom] Connecting to room:', roomNameValue);
 
@@ -277,6 +282,9 @@ function ConnectToRoom() {
 
   const handleDisconnect = async () => {
     try {
+      if (state.roomName) {
+        await pauseFolder(state.roomName);
+      }
       await disconnect();
       // eslint-disable-next-line no-alert
       alert('Disconnected from room successfully');

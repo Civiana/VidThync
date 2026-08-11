@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router';
 import {
   createOrUpdateFolderSyncThing,
   fetchDeviceID,
+  pauseFolder,
+  unPauseFolder,
 } from 'src/syncthing/API';
 import { useYjs } from 'src/yjsRTC/YjsContext';
 import Joins from './Joins';
@@ -154,6 +156,8 @@ function CreateRoom() {
         isHost: true,
       });
 
+      await unPauseFolder(roomKey);
+
       await saveRoomConfig({
         isHost: true,
         roomName: roomNameValue.trim(),
@@ -219,6 +223,9 @@ function CreateRoom() {
 
   const handleDisconnect = async () => {
     try {
+      if (state.roomName) {
+        await pauseFolder(state.roomName);
+      }
       if (state.isHost && window.electronAPI?.stopServer) {
         window.electronAPI.stopServer();
       }

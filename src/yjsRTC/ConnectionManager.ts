@@ -350,6 +350,9 @@ class YjsConnectionManager {
         status: 'connected',
       });
 
+      // Unpause the shared Syncthing folder when joining/rejoining
+      await unPauseFolder(config.roomName);
+
       // eslint-disable-next-line no-console
       console.log(
         '[YjsConnectionManager] Successfully connected to room:',
@@ -450,7 +453,9 @@ class YjsConnectionManager {
     // eslint-disable-next-line no-console
     console.log('[YjsConnectionManager] Cleaning up resources...');
 
-      pauseFolder(this.currentState.roomName ?? "");
+    if (this.currentState.roomName) {
+      await pauseFolder(this.currentState.roomName);
+    }
 
     if (
       this.currentState.isHost &&

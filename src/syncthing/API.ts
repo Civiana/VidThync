@@ -368,55 +368,65 @@ export async function addUserToFolder(deviceNo: string, folderName: string) {
 }
 
 export async function pauseFolder(folderName: string) {
-  const requestGET = await getRequestGET();
-  const response = await fetch(URL + '/config', requestGET);
-  const config = await response.json();
-  const folderIndex = config.folders.findIndex(
-    (x: any) => x?.label == folderName,
-  );
-  if (config.folders[folderIndex]?.label == folderName) {
-    if (config.folders[folderIndex]?.paused == false) {
-      config.folders[folderIndex].paused = true;
-    } else {
-      return;
+  if (!folderName) return;
+  try {
+    const requestGET = await getRequestGET();
+    const response = await fetch(URL + '/config', requestGET);
+    if (!response.ok) return;
+    const config = await response.json();
+    const folderIndex = config.folders.findIndex(
+      (x: any) => x?.label == folderName || x?.id == folderName,
+    );
+    if (folderIndex !== -1) {
+      if (config.folders[folderIndex].paused !== true) {
+        config.folders[folderIndex].paused = true;
+        const key = await initApiKey();
+        const requestPUT = {
+          method: 'PUT',
+          headers: {
+            'X-API-Key': key || '',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(config),
+        };
+        await fetch(URL + '/config', requestPUT);
+        console.log(`[pauseFolder] Folder ${folderName} paused.`);
+      }
     }
+  } catch (error) {
+    console.error('[pauseFolder] Error pausing folder:', error);
   }
-  const key = await initApiKey();
-  const requestPOST = {
-    method: 'PUT',
-    headers: {
-      'X-API-Key': key || '',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(config),
-  };
-  const res = await fetch(URL + '/config', requestPOST);
 }
 
 export async function unPauseFolder(folderName: string) {
-  const requestGET = await getRequestGET();
-  const response = await fetch(URL + '/config', requestGET);
-  const config = await response.json();
-  const folderIndex = config.folders.findIndex(
-    (x: any) => x?.label == folderName,
-  );
-  if (config.folders[folderIndex]?.label == folderName) {
-    if (config.folders[folderIndex]?.paused == true) {
-      config.folders[folderIndex].paused = false;
-    } else {
-      return;
+  if (!folderName) return;
+  try {
+    const requestGET = await getRequestGET();
+    const response = await fetch(URL + '/config', requestGET);
+    if (!response.ok) return;
+    const config = await response.json();
+    const folderIndex = config.folders.findIndex(
+      (x: any) => x?.label == folderName || x?.id == folderName,
+    );
+    if (folderIndex !== -1) {
+      if (config.folders[folderIndex].paused !== false) {
+        config.folders[folderIndex].paused = false;
+        const key = await initApiKey();
+        const requestPUT = {
+          method: 'PUT',
+          headers: {
+            'X-API-Key': key || '',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(config),
+        };
+        await fetch(URL + '/config', requestPUT);
+        console.log(`[unPauseFolder] Folder ${folderName} unpaused.`);
+      }
     }
+  } catch (error) {
+    console.error('[unPauseFolder] Error unpausing folder:', error);
   }
-  const key = await initApiKey();
-  const requestPOST = {
-    method: 'PUT',
-    headers: {
-      'X-API-Key': key || '',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(config),
-  };
-  const res = await fetch(URL + '/config', requestPOST);
 }
 
 export async function dismissPendingDevices(userID: string) {
