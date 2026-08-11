@@ -145,7 +145,20 @@ export function startSignalingServer(port = '49999') {
     wss.handleUpgrade(request, socket, head, handleAuth);
   });
 
-  server.listen(port);
+  server.on('error', (error) => {
+    if (error && error.code === 'EADDRINUSE') {
+      console.warn(
+        `[SignalingServer] Port ${port} is already in use. Reusing existing signaling server instance.`,
+      );
+      return;
+    }
 
-  console.log('Signaling server running on localhost:', port);
+    console.error('[SignalingServer] Failed to start signaling server:', error);
+  });
+
+  server.on('listening', () => {
+    console.log('Signaling server running on localhost:', port);
+  });
+
+  server.listen(port);
 }

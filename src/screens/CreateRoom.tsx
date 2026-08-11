@@ -18,9 +18,34 @@ function CreateRoom() {
   const [filePath, setFilePath] = useState('');
   const [deviceID, setDeviceID] = useState('');
   const [signalingPort, setSignalingPort] = useState('49999');
+  const [savedHostRooms, setSavedHostRooms] = useState<
+    Awaited<ReturnType<typeof listSavedRoomConfigs>>
+  >([]);
+  const [isLoadingSavedRooms, setIsLoadingSavedRooms] = useState(true);
 
   const navigate = useNavigate();
-  const { connect, disconnect, state, isConnected, getYDoc } = useYjs();
+  const {
+    connect,
+    disconnect,
+    saveRoomConfig,
+    listSavedRoomConfigs,
+    state,
+    isConnected,
+    getYDoc,
+  } = useYjs();
+
+  const refreshSavedRooms = async () => {
+    try {
+      setIsLoadingSavedRooms(true);
+      const rooms = await listSavedRoomConfigs();
+      setSavedHostRooms(rooms.filter((room) => room.isHost));
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[CreateRoom] Failed to load saved rooms:', error);
+    } finally {
+      setIsLoadingSavedRooms(false);
+    }
+  };
 
   const handlePickFolder = async () => {
     const selectedPath = await window.electronAPI.selectFolder();
@@ -34,6 +59,7 @@ function CreateRoom() {
       setDeviceID(await fetchDeviceID());
     }
     deviceFetch();
+    refreshSavedRooms();
   }, []);
 
   // Cleanup on unmount - offer to disconnect
@@ -44,21 +70,29 @@ function CreateRoom() {
     };
   }, []);
 
-  const handleCreateRoom = async () => {
-    if (!roomName.trim()) {
+  const createRoomWithConfig = async (params: {
+    roomNameValue: string;
+    filePathValue: string;
+    signalingPortValue: string;
+    descriptionValue: string;
+  }) => {
+    const { roomNameValue, filePathValue, signalingPortValue, descriptionValue } =
+      params;
+
+    if (!roomNameValue.trim()) {
       // eslint-disable-next-line no-alert
       alert('Please enter a room name');
       return;
     }
 
-    if (!filePath.trim()) {
+    if (!filePathValue.trim()) {
       // eslint-disable-next-line no-alert
       alert('Please select a folder path');
       return;
     }
 
     // Validate port number
-    const portNum = parseInt(signalingPort, 10);
+    const portNum = parseInt(signalingPortValue, 10);
     if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
       // eslint-disable-next-line no-alert
       alert('Please enter a valid port number (1-65535)');
@@ -66,7 +100,7 @@ function CreateRoom() {
     }
 
     // Check if already connected to a different room
-    if (isConnected && state.roomName !== roomName) {
+    if (isConnected && state.roomName !== roomNameValue) {
       // eslint-disable-next-line no-alert
       const shouldDisconnect = window.confirm(
         `You are already connected to room "${state.roomName}". Do you want to disconnect and create a new room?`,
@@ -80,19 +114,30 @@ function CreateRoom() {
     setIsServerStarting(true);
 
     try {
+      const roomKey = `${roomNameValue + deviceID}`;
+
       // Setup Syncthing folder
       await createOrUpdateFolderSyncThing(
         '/config/folders',
-        `${roomName + deviceID}`,
-        filePath,
+        roomKey,
+        filePathValue,
       );
 
       // Start the signaling server with the selected port
-      window.electronAPI.startServer(signalingPort);
+      try {
+      window.electronAPI.startServer(signalingPortValue);
+    } catch (error) {
+      console.error('[CreateRoom] Failed to start signaling server:', error);
+      alert(
+        `Failed to start signaling server on port ${signalingPortValue}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
+    }
 
       // eslint-disable-next-line no-console
       console.log(
-        `[CreateRoom] Starting signaling server on port ${signalingPort}`,
+        `[CreateRoom] Starting signaling server on port ${signalingPortValue}`,
       );
 
       // Wait a bit for server to start
@@ -102,20 +147,37 @@ function CreateRoom() {
 
       // Connect to the room using the connection manager
       await connect({
-        roomName: `${roomName + deviceID}`,
+        roomName: roomKey,
         signalingUrl: 'localhost',
-        signalingPort,
+        signalingPort: signalingPortValue,
         isHost: true,
       });
 
+      await saveRoomConfig({
+        isHost: true,
+        roomName: roomNameValue.trim(),
+        roomKey,
+        signalingUrl: 'localhost',
+        signalingPort: signalingPortValue,
+        filePath: filePathValue,
+        deviceID,
+        description: descriptionValue.trim(),
+        hostDeviceId: '',
+        hostPort: '',
+        connectionMode: '',
+        createdAt: new Date().toISOString(),
+      });
+
+      await refreshSavedRooms();
+
       // eslint-disable-next-line no-console
       console.log(
-        `[CreateRoom] Successfully created and connected to room: ${roomName}`,
+        `[CreateRoom] Successfully created and connected to room: ${roomNameValue}`,
       );
 
       // eslint-disable-next-line no-alert
       alert(
-        `Room "${roomName}" created successfully! Server running on localhost:${signalingPort}`,
+        `Room "${roomNameValue}" created successfully! Server running on localhost:${signalingPortValue}`,
       );
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -127,6 +189,31 @@ function CreateRoom() {
     } finally {
       setIsServerStarting(false);
     }
+  };
+
+  const handleCreateRoom = async () => {
+    await createRoomWithConfig({
+      roomNameValue: roomName,
+      filePathValue: filePath,
+      signalingPortValue: signalingPort,
+      descriptionValue: customDescription,
+    });
+  };
+
+  const handleCreateSavedRoom = async (
+    savedRoom: (typeof savedHostRooms)[number],
+  ) => {
+    setRoomName(savedRoom.roomName);
+    setFilePath(savedRoom.filePath);
+    setSignalingPort(savedRoom.signalingPort);
+    setCustomDescription(savedRoom.description);
+
+    await createRoomWithConfig({
+      roomNameValue: savedRoom.roomName,
+      filePathValue: savedRoom.filePath,
+      signalingPortValue: savedRoom.signalingPort,
+      descriptionValue: savedRoom.description,
+    });
   };
 
   const handleDisconnect = async () => {
@@ -202,7 +289,7 @@ function CreateRoom() {
             className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
           />
           <p className="text-xs text-gray-400 mt-1">
-            Enter the port of your signaling server (default: 4444, range:
+            Enter the port of your signaling server (default: 4999, range:
             1-65535)
           </p>
         </div>
@@ -280,6 +367,44 @@ function CreateRoom() {
             <FilesDisplay roomName={`${roomName + deviceID}`} />
           </div>
         )}
+
+        <div className="mt-8">
+          <h3 className="text-lg font-semibold mb-3">Saved Host Rooms</h3>
+          {isLoadingSavedRooms ? (
+            <p className="text-sm text-gray-400">Loading saved rooms...</p>
+          ) : savedHostRooms.length === 0 ? (
+            <p className="text-sm text-gray-400">No saved host rooms yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {savedHostRooms.map((savedRoom) => (
+                <div
+                  key={savedRoom.roomKey}
+                  className="rounded-lg border border-gray-600 bg-gray-800 p-4"
+                >
+                  <p className="font-semibold text-white">{savedRoom.roomName}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Port: {savedRoom.signalingPort}
+                  </p>
+                  <p className="text-xs text-gray-400 truncate">
+                    Folder: {savedRoom.filePath}
+                  </p>
+                  {savedRoom.description && (
+                    <p className="text-xs text-gray-300 mt-1">
+                      {savedRoom.description}
+                    </p>
+                  )}
+                  <Button
+                    className="mt-3"
+                    onClick={() => handleCreateSavedRoom(savedRoom)}
+                    disabled={isServerStarting || state.status === 'connecting'}
+                  >
+                    Create
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="text-center mt-8 text-gray-500 text-sm">

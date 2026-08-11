@@ -11,6 +11,7 @@ import {
   connectionManager,
   ConnectionState,
   ConnectionConfig,
+  StoredRoomConfig,
 } from './ConnectionManager';
 
 interface YjsContextValue {
@@ -19,6 +20,9 @@ interface YjsContextValue {
   disconnect: () => Promise<void>;
   reconnect: () => Promise<void>;
   clearRoomData: (roomName: string) => Promise<void>;
+  saveRoomConfig: (config: StoredRoomConfig) => Promise<void>;
+  loadRoomConfig: (roomName: string) => Promise<StoredRoomConfig | null>;
+  listSavedRoomConfigs: () => Promise<StoredRoomConfig[]>;
   getYDoc: () => Y.Doc | null;
   isConnected: boolean;
 }
@@ -84,6 +88,36 @@ export function YjsProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const saveRoomConfig = useCallback(async (config: StoredRoomConfig) => {
+    try {
+      await connectionManager.saveRoomConfig(config);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[YjsProvider] Save room config failed:', error);
+      throw error;
+    }
+  }, []);
+
+  const loadRoomConfig = useCallback(async (roomName: string) => {
+    try {
+      return await connectionManager.loadRoomConfig(roomName);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[YjsProvider] Load room config failed:', error);
+      throw error;
+    }
+  }, []);
+
+  const listSavedRoomConfigs = useCallback(async () => {
+    try {
+      return await connectionManager.listSavedRoomConfigs();
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[YjsProvider] List saved room configs failed:', error);
+      throw error;
+    }
+  }, []);
+
   const getYDoc = useCallback(() => {
     return connectionManager.getYDoc();
   }, []);
@@ -95,10 +129,23 @@ export function YjsProvider({ children }: { children: React.ReactNode }) {
       disconnect,
       reconnect,
       clearRoomData,
+      saveRoomConfig,
+      loadRoomConfig,
+      listSavedRoomConfigs,
       getYDoc,
       isConnected: state.status === 'connected',
     }),
-    [state, connect, disconnect, reconnect, clearRoomData, getYDoc],
+    [
+      state,
+      connect,
+      disconnect,
+      reconnect,
+      clearRoomData,
+      saveRoomConfig,
+      loadRoomConfig,
+      listSavedRoomConfigs,
+      getYDoc,
+    ],
   );
 
   return <YjsContext.Provider value={value}>{children}</YjsContext.Provider>;

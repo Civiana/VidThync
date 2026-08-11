@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { fetchDeviceID, addDevicesID } from 'src/syncthing/API';
 import { useYjs } from 'src/yjsRTC/YjsContext';
+import type { StoredRoomConfig } from 'src/yjsRTC/ConnectionManager';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useYArray } from 'src/yjsRTC/YjsContext';
 import { removeRemoteDevices } from 'src/syncthing/API';
@@ -22,9 +23,32 @@ function ConnectToRoom() {
   );
   const [filePath, setFilePath] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [savedPeerRooms, setSavedPeerRooms] = useState<StoredRoomConfig[]>([]);
+  const [isLoadingSavedRooms, setIsLoadingSavedRooms] = useState(true);
 
   const navigate = useNavigate();
-  const { connect, disconnect, state, isConnected, getYDoc } = useYjs();
+  const {
+    connect,
+    disconnect,
+    saveRoomConfig,
+    listSavedRoomConfigs,
+    state,
+    isConnected,
+    getYDoc,
+  } = useYjs();
+
+  const refreshSavedRooms = async () => {
+    try {
+      setIsLoadingSavedRooms(true);
+      const rooms = await listSavedRoomConfigs();
+      setSavedPeerRooms(rooms.filter((room) => !room.isHost));
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[ConnectToRoom] Failed to load saved rooms:', error);
+    } finally {
+      setIsLoadingSavedRooms(false);
+    }
+  };
 
   const handlePickFolder = async () => {
     const selectedPath = await window.electronAPI.selectFolder();
@@ -38,6 +62,7 @@ function ConnectToRoom() {
       setDeviceID(await fetchDeviceID());
     }
     deviceFetch();
+    refreshSavedRooms();
   }, []);
 
   // Cleanup on unmount
@@ -48,31 +73,49 @@ function ConnectToRoom() {
     };
   }, []);
 
-  const handleConnectToCustomRoom = async () => {
+  const connectToRoomWithConfig = async (params: {
+    roomNameValue: string;
+    signalingUrlValue: string;
+    hostDeviceIdValue: string;
+    filePathValue: string;
+    signalingPortValue: string;
+    hostPortValue: string;
+    connectionModeValue: 'dynamic' | 'direct';
+  }) => {
+    const {
+      roomNameValue,
+      signalingUrlValue,
+      hostDeviceIdValue,
+      filePathValue,
+      signalingPortValue,
+      hostPortValue,
+      connectionModeValue,
+    } = params;
+
     // Validation
-    if (!roomName.trim()) {
+    if (!roomNameValue.trim()) {
       // eslint-disable-next-line no-alert
       alert('Please enter a room name');
       return;
     }
-    if (!signalingUrl.trim()) {
+    if (!signalingUrlValue.trim()) {
       // eslint-disable-next-line no-alert
       alert('Please enter a signaling server URL');
       return;
     }
-    if (!hostDeviceId.trim()) {
+    if (!hostDeviceIdValue.trim()) {
       // eslint-disable-next-line no-alert
       alert('Please enter the host device ID');
       return;
     }
-    if (!filePath.trim()) {
+    if (!filePathValue.trim()) {
       // eslint-disable-next-line no-alert
       alert('Please select a folder path');
       return;
     }
 
     // Check if already connected to a different room
-    if (isConnected && state.roomName !== roomName) {
+    if (isConnected && state.roomName !== roomNameValue) {
       // eslint-disable-next-line no-alert
       const shouldDisconnect = window.confirm(
         `You are already connected to room "${state.roomName}". Do you want to disconnect and join a new room?`,
@@ -86,28 +129,47 @@ function ConnectToRoom() {
     setIsConnecting(true);
 
     try {
+      const roomKey = `${roomNameValue + hostDeviceIdValue}`;
+
       // Add the host device to Syncthing
       // eslint-disable-next-line no-console
       console.log('[ConnectToRoom] Adding host device to Syncthing...');
       await addDevicesID(
         '/config',
-        hostDeviceId,
-        signalingUrl,
-        hostPort,
-        filePath,
-        directOrDynamic,
+        hostDeviceIdValue,
+        signalingUrlValue,
+        hostPortValue,
+        filePathValue,
+        connectionModeValue,
       );
 
       // eslint-disable-next-line no-console
-      console.log('[ConnectToRoom] Connecting to room:', roomName);
+      console.log('[ConnectToRoom] Connecting to room:', roomNameValue);
 
       // Connect to the room using the connection manager
       await connect({
-        roomName: `${roomName + hostDeviceId}`,
-        signalingUrl,
-        signalingPort,
+        roomName: roomKey,
+        signalingUrl: signalingUrlValue,
+        signalingPort: signalingPortValue,
         isHost: false,
       });
+
+      await saveRoomConfig({
+        isHost: false,
+        roomName: roomNameValue.trim(),
+        roomKey,
+        signalingUrl: signalingUrlValue,
+        signalingPort: signalingPortValue,
+        filePath: filePathValue,
+        deviceID,
+        description: '',
+        hostDeviceId: hostDeviceIdValue.trim(),
+        hostPort: hostPortValue.trim(),
+        connectionMode: connectionModeValue,
+        createdAt: new Date().toISOString(),
+      });
+
+      await refreshSavedRooms();
 
       // Add current device ID to the shared array for host to see
       const ydoc = getYDoc();
@@ -124,11 +186,11 @@ function ConnectToRoom() {
 
       // eslint-disable-next-line no-console
       console.log(
-        `[ConnectToRoom] Successfully connected to room: ${roomName}`,
+        `[ConnectToRoom] Successfully connected to room: ${roomNameValue}`,
       );
 
       // eslint-disable-next-line no-alert
-      alert(`Successfully connected to room "${roomName}"!`);
+      alert(`Successfully connected to room "${roomNameValue}"!`);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('[ConnectToRoom] Connection error:', error);
@@ -139,6 +201,41 @@ function ConnectToRoom() {
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  const handleConnectToCustomRoom = async () => {
+    await connectToRoomWithConfig({
+      roomNameValue: roomName,
+      signalingUrlValue: signalingUrl,
+      hostDeviceIdValue: hostDeviceId,
+      filePathValue: filePath,
+      signalingPortValue: signalingPort,
+      hostPortValue: hostPort,
+      connectionModeValue: directOrDynamic,
+    });
+  };
+
+  const handleConnectSavedRoom = async (savedRoom: StoredRoomConfig) => {
+    setRoomName(savedRoom.roomName);
+    setSignalingUrl(savedRoom.signalingUrl);
+    setHostDeviceId(savedRoom.hostDeviceId);
+    setFilePath(savedRoom.filePath);
+    setSignalingPort(savedRoom.signalingPort);
+    setHostPort(savedRoom.hostPort || '22000');
+    setDirectOrDynamic(
+      savedRoom.connectionMode === 'direct' ? 'direct' : 'dynamic',
+    );
+
+    await connectToRoomWithConfig({
+      roomNameValue: savedRoom.roomName,
+      signalingUrlValue: savedRoom.signalingUrl,
+      hostDeviceIdValue: savedRoom.hostDeviceId,
+      filePathValue: savedRoom.filePath,
+      signalingPortValue: savedRoom.signalingPort,
+      hostPortValue: savedRoom.hostPort || '22000',
+      connectionModeValue:
+        savedRoom.connectionMode === 'direct' ? 'direct' : 'dynamic',
+    });
   };
 
   console.log('Rejected Array:', rejectedArr);
@@ -390,6 +487,42 @@ function ConnectToRoom() {
                 <FilesDisplay roomName={`${roomName + hostDeviceId}`} />
               </>
             )}
+
+            <div className="mt-6">
+              <h4 className="text-lg font-semibold mb-3">Saved Peer Rooms</h4>
+              {isLoadingSavedRooms ? (
+                <p className="text-sm text-gray-400">Loading saved rooms...</p>
+              ) : savedPeerRooms.length === 0 ? (
+                <p className="text-sm text-gray-400">No saved peer rooms yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {savedPeerRooms.map((savedRoom) => (
+                    <div
+                      key={savedRoom.roomKey}
+                      className="rounded-lg border border-gray-600 bg-gray-900 p-4"
+                    >
+                      <p className="font-semibold text-white">{savedRoom.roomName}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Server: {savedRoom.signalingUrl}:{savedRoom.signalingPort}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Host ID: {savedRoom.hostDeviceId || 'N/A'}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        Folder: {savedRoom.filePath}
+                      </p>
+                      <Button
+                        className="mt-3"
+                        onClick={() => handleConnectSavedRoom(savedRoom)}
+                        disabled={isConnecting || state.status === 'connecting'}
+                      >
+                        Connect
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

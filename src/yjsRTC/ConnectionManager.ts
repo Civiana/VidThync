@@ -26,7 +26,23 @@ export type ConnectionConfig = {
   isHost: boolean;
 };
 
+export type StoredRoomConfig = {
+  isHost: boolean;
+  roomName: string;
+  roomKey: string;
+  signalingUrl: string;
+  signalingPort: string;
+  filePath: string;
+  deviceID: string;
+  description: string;
+  hostDeviceId: string;
+  hostPort: string;
+  connectionMode: 'direct' | 'dynamic' | '';
+  createdAt: string;
+};
+
 type ConnectionListener = (state: ConnectionState) => void;
+const SAVED_ROOMS_REGISTRY = '__videothync_saved_rooms__';
 
 /**
  * Singleton class to manage YJS/WebRTC connections.
@@ -113,6 +129,171 @@ class YjsConnectionManager {
    */
   public getYDoc(): Y.Doc | null {
     return this.ydoc;
+  }
+
+  /**
+   * Persist the current room configuration inside the Y.Doc so it is stored
+   * by y-indexeddb and can be restored later.
+   */
+  public async saveRoomConfig(config: StoredRoomConfig): Promise<void> {
+    if (!this.ydoc || !this.idb) {
+      throw new Error('Cannot save room config before the room is connected');
+    }
+
+    const roomConfig = this.ydoc.getMap<unknown>('roomConfig');
+
+    roomConfig.clear();
+    roomConfig.set('isHost', config.isHost);
+    roomConfig.set('roomName', config.roomName);
+    roomConfig.set('roomKey', config.roomKey);
+    roomConfig.set('signalingUrl', config.signalingUrl);
+    roomConfig.set('signalingPort', config.signalingPort);
+    roomConfig.set('filePath', config.filePath);
+    roomConfig.set('deviceID', config.deviceID);
+    roomConfig.set('description', config.description);
+    roomConfig.set('hostDeviceId', config.hostDeviceId);
+    roomConfig.set('hostPort', config.hostPort);
+    roomConfig.set('connectionMode', config.connectionMode);
+    roomConfig.set('createdAt', config.createdAt);
+
+    await this.idb.whenSynced;
+    await this.upsertSavedRoomRegistryEntry(config.roomKey);
+
+    // eslint-disable-next-line no-console
+    console.log('[YjsConnectionManager] Room config saved to IndexedDB');
+  }
+
+  /**
+   * Keep a small registry of known room keys so we can list all saved rooms.
+   */
+  private async upsertSavedRoomRegistryEntry(roomKey: string): Promise<void> {
+    const registryDoc = new Y.Doc();
+    const registryIdb = new IndexeddbPersistence(SAVED_ROOMS_REGISTRY, registryDoc);
+
+    try {
+      await registryIdb.whenSynced;
+      const savedRooms = registryDoc.getMap<string>('savedRooms');
+      savedRooms.set(roomKey, new Date().toISOString());
+      await registryIdb.whenSynced;
+    } finally {
+      await registryIdb.destroy();
+      registryDoc.destroy();
+    }
+  }
+
+  /**
+   * Return all room configs that were previously persisted.
+   */
+  public async listSavedRoomConfigs(): Promise<StoredRoomConfig[]> {
+    const registryDoc = new Y.Doc();
+    const registryIdb = new IndexeddbPersistence(SAVED_ROOMS_REGISTRY, registryDoc);
+
+    try {
+      await registryIdb.whenSynced;
+
+      const savedRooms = registryDoc.getMap<string>('savedRooms');
+      const roomKeys = Array.from(savedRooms.keys());
+
+      const loadedConfigs = await Promise.all(
+        roomKeys.map(async (roomKey) => {
+          try {
+            return await this.loadRoomConfig(roomKey);
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      return loadedConfigs
+        .filter((config): config is StoredRoomConfig => config !== null)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    } finally {
+      await registryIdb.destroy();
+      registryDoc.destroy();
+    }
+  }
+
+  /**
+   * Load the persisted room config for a room from IndexedDB.
+   */
+  public async loadRoomConfig(
+    roomName: string,
+  ): Promise<StoredRoomConfig | null> {
+    const tempDoc = new Y.Doc();
+    const tempIdb = new IndexeddbPersistence(roomName, tempDoc);
+
+    try {
+      await tempIdb.whenSynced;
+
+      const roomConfig = tempDoc.getMap<unknown>('roomConfig');
+      if (roomConfig.size === 0) {
+        return null;
+      }
+
+      const isHostValue = roomConfig.get('isHost');
+      const legacyType = roomConfig.get('type') as string | undefined;
+      const isHost =
+        typeof isHostValue === 'boolean'
+          ? isHostValue
+          : legacyType === 'host'
+            ? true
+            : legacyType === 'peer'
+              ? false
+              : undefined;
+      const storedRoomName = roomConfig.get('roomName') as string | undefined;
+      const roomKey = roomConfig.get('roomKey') as string | undefined;
+      const signalingUrl = roomConfig.get('signalingUrl') as
+        | string
+        | undefined;
+      const signalingPort = roomConfig.get('signalingPort') as
+        | string
+        | undefined;
+      const filePath = roomConfig.get('filePath') as string | undefined;
+      const deviceID = roomConfig.get('deviceID') as string | undefined;
+      const description =
+        (roomConfig.get('description') as string | undefined) ?? '';
+      const hostDeviceId =
+        (roomConfig.get('hostDeviceId') as string | undefined) ?? '';
+      const hostPort = (roomConfig.get('hostPort') as string | undefined) ?? '';
+      const connectionMode =
+        (roomConfig.get('connectionMode') as
+          | 'direct'
+          | 'dynamic'
+          | undefined) ?? '';
+      const createdAt =
+        (roomConfig.get('createdAt') as string | undefined) ??
+        new Date().toISOString();
+
+      if (
+        typeof isHost !== 'boolean' ||
+        !storedRoomName ||
+        !roomKey ||
+        !signalingUrl ||
+        !signalingPort ||
+        !filePath ||
+        !deviceID
+      ) {
+        return null;
+      }
+
+      return {
+        isHost,
+        roomName: storedRoomName,
+        roomKey,
+        signalingUrl,
+        signalingPort,
+        filePath,
+        deviceID,
+        description,
+        hostDeviceId,
+        hostPort,
+        connectionMode,
+        createdAt,
+      };
+    } finally {
+      await tempIdb.destroy();
+      tempDoc.destroy();
+    }
   }
 
   /**
