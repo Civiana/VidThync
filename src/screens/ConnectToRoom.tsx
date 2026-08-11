@@ -3,7 +3,12 @@ import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { fetchDeviceID, addDevicesID } from 'src/syncthing/API';
+import {
+  fetchDeviceID,
+  addDevicesID,
+  createOrUpdateFolderSyncThing,
+  acceptPendingFolders,
+} from 'src/syncthing/API';
 import { useYjs } from 'src/yjsRTC/YjsContext';
 import type { StoredRoomConfig } from 'src/yjsRTC/ConnectionManager';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -142,6 +147,20 @@ function ConnectToRoom() {
         filePathValue,
         connectionModeValue,
       );
+
+      // Explicitly create folder in Client's Syncthing config with Host device
+      // eslint-disable-next-line no-console
+      console.log('[ConnectToRoom] Creating local Syncthing folder...');
+      await createOrUpdateFolderSyncThing(
+        '/config/folders',
+        roomKey,
+        filePathValue,
+        roomKey,
+        [hostDeviceIdValue],
+      );
+
+      // Auto-accept any pending folder invitations
+      await acceptPendingFolders(roomKey);
 
       // eslint-disable-next-line no-console
       console.log('[ConnectToRoom] Connecting to room:', roomNameValue);

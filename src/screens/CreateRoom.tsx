@@ -116,11 +116,12 @@ function CreateRoom() {
     try {
       const roomKey = `${roomNameValue + deviceID}`;
 
-      // Setup Syncthing folder
+      // Setup Syncthing folder with deterministic folder ID (roomKey)
       await createOrUpdateFolderSyncThing(
         '/config/folders',
         roomKey,
         filePathValue,
+        roomKey,
       );
 
       // Start the signaling server with the selected port

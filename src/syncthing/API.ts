@@ -43,34 +43,43 @@ export async function createOrUpdateFolderSyncThing(
   endpoint: string,
   label: string,
   filePath: string,
+  customFolderId?: string,
+  initialDevices?: string[],
 ) {
   const requestGET = await getRequestGET();
   const key = await initApiKey();
-  const folderID = generateRandomFolderId();
+  const folderID = customFolderId || label;
   const device_id = await fetchDeviceID();
-  const res = await fetch(URL + '/config/folders', requestGET)
-  const config = await res.json()
+  const res = await fetch(URL + '/config/folders', requestGET);
+  const config = await res.json();
+
+  const deviceList = [{ deviceID: device_id }];
+  if (initialDevices && Array.isArray(initialDevices)) {
+    initialDevices.forEach((devId) => {
+      if (devId && !deviceList.some((d) => d.deviceID === devId)) {
+        deviceList.push({ deviceID: devId });
+      }
+    });
+  }
+
   const folderConfig = {
     id: folderID,
     label: label,
     path: `${filePath}`,
     type: 'sendreceive', // or 'sendonly', 'receiveonly'
-    devices: [
-      {
-        deviceID: device_id,
-      },
-    ],
+    devices: deviceList,
     rescanIntervalS: 60, // Scan every 60 seconds
     fsWatcherEnabled: true, // Enable filesystem watcher
     ignorePerms: false,
     autoNormalize: true,
   };
+
   const alreadyExists = config.some(
-    (folder: any) => folder.label === label,
+    (folder: any) => folder.id === folderID || folder.label === label,
   );
   if (alreadyExists) {
     console.log('Folder already exists');
-    return { success: true, message: 'Folder already exists' };
+    return { success: true, message: 'Folder already exists', folderId: folderID };
   }
 
   const requestPOST = {
@@ -174,19 +183,50 @@ export async function acceptUsers(
 ) {
   const requestGET = await getRequestGET();
   const response = await fetch(URL + '/config', requestGET);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch config: ${response.status}`);
+  }
   const config = await response.json();
-  config.devices.push({
-    deviceID: userID,
-    name: userName,
-    addresses: ['dynamic'],
-    autoAcceptFolders: true, // Required default
-    compression: 'metadata', // Default
-    introducer: false,
-    skipIntroductionRemovals: false,
-  });
+
+  // 1. Add device globally if not exists
+  const deviceAlreadyExists = config.devices.some(
+    (device: any) => device.deviceID === userID,
+  );
+  if (!deviceAlreadyExists) {
+    config.devices.push({
+      deviceID: userID,
+      name: userName,
+      addresses: ['dynamic'],
+      autoAcceptFolders: true, // Required default
+      compression: 'metadata', // Default
+      introducer: false,
+      skipIntroductionRemovals: false,
+    });
+  }
+
+  // 2. Add device to folder in the SAME config object (atomic update!)
+  const folderIndex = config.folders.findIndex(
+    (f: any) => f.label === roomName || f.id === roomName,
+  );
+  if (folderIndex !== -1) {
+    const folder = config.folders[folderIndex];
+    const deviceInFolder = folder.devices.some(
+      (d: any) => d.deviceID === userID,
+    );
+    if (!deviceInFolder) {
+      folder.devices.push({
+        deviceID: userID,
+        encryptionPassword: '',
+        introducedBy: '',
+      });
+      console.log(`[acceptUsers] Device ${userID} added to folder ${roomName}`);
+    }
+  } else {
+    console.warn(`[acceptUsers] Folder ${roomName} not found in config.`);
+  }
 
   const key = await initApiKey();
-  const requestPOST = {
+  const requestPUT = {
     method: 'PUT',
     headers: {
       'X-API-Key': key || '',
@@ -194,15 +234,61 @@ export async function acceptUsers(
     },
     body: JSON.stringify(config),
   };
-  const res = await fetch(URL + '/config', requestPOST);
-  addUserToFolder(userID, roomName);
+  const res = await fetch(URL + '/config', requestPUT);
   if (!res.ok) {
-    const errorText = await response.text();
+    const errorText = await res.text();
     throw new Error(
-      `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
+      `HTTP ${res.status}: ${res.statusText} - ${errorText}`,
     );
   }
   return res;
+}
+
+export async function acceptPendingFolders(targetFolderId?: string) {
+  try {
+    const requestGET = await getRequestGET();
+    const response = await fetch(URL + '/cluster/pending/folders', requestGET);
+    if (!response.ok) {
+      return;
+    }
+    const pendingFolders = await response.json();
+    if (!pendingFolders || typeof pendingFolders !== 'object') {
+      return;
+    }
+    const folderIDs = Object.keys(pendingFolders);
+    for (const fId of folderIDs) {
+      if (
+        !targetFolderId ||
+        fId === targetFolderId ||
+        pendingFolders[fId]?.label === targetFolderId
+      ) {
+        console.log(
+          `[acceptPendingFolders] Auto-accepting pending folder: ${fId}`,
+        );
+        const key = await initApiKey();
+        const requestPOST = {
+          method: 'POST',
+          headers: {
+            'X-API-Key': key || '',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            folder: fId,
+            device: pendingFolders[fId].offerer,
+          }),
+        };
+        await fetch(
+          URL + `/cluster/pending/folders?folder=${fId}`,
+          requestPOST,
+        );
+      }
+    }
+  } catch (error) {
+    console.error(
+      '[acceptPendingFolders] Error checking/accepting pending folders:',
+      error,
+    );
+  }
 }
 
 export async function fetchSyncthingData(endpoint: string) {

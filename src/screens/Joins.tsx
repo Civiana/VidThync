@@ -87,8 +87,8 @@ function Joins({ ydoc, roomName }: props) {
           <li key={device.id} className="group">
             {device.name} ({device.id})
             <Button
-              onClick={() => {
-                acceptUsers(device.id, device.name, roomName);
+              onClick={async () => {
+                await acceptUsers(device.id, device.name, roomName);
                 deleteAcceptedOrRejectedRequest(device.id);
               }}
               className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
