@@ -1,7 +1,12 @@
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { WebrtcProvider } from 'y-webrtc';
-  import { pauseFolder, unPauseFolder} from 'src/syncthing/API';
+import { pauseFolder, unPauseFolder } from 'src/syncthing/API';
+import {
+  upsertRoomRegistry,
+  getRoomRegistryKeys,
+  removeFromRoomRegistry,
+} from 'src/utils/roomRegistryStorage';
 
 
 export type ConnectionStatus =
@@ -42,7 +47,6 @@ export type StoredRoomConfig = {
 };
 
 type ConnectionListener = (state: ConnectionState) => void;
-const SAVED_ROOMS_REGISTRY = '__videothync_saved_rooms__';
 
 /**
  * Singleton class to manage YJS/WebRTC connections.
@@ -167,50 +171,28 @@ class YjsConnectionManager {
    * Keep a small registry of known room keys so we can list all saved rooms.
    */
   private async upsertSavedRoomRegistryEntry(roomKey: string): Promise<void> {
-    const registryDoc = new Y.Doc();
-    const registryIdb = new IndexeddbPersistence(SAVED_ROOMS_REGISTRY, registryDoc);
-
-    try {
-      await registryIdb.whenSynced;
-      const savedRooms = registryDoc.getMap<string>('savedRooms');
-      savedRooms.set(roomKey, new Date().toISOString());
-      await registryIdb.whenSynced;
-    } finally {
-      await registryIdb.destroy();
-      registryDoc.destroy();
-    }
+    await upsertRoomRegistry(roomKey);
   }
 
   /**
    * Return all room configs that were previously persisted.
    */
   public async listSavedRoomConfigs(): Promise<StoredRoomConfig[]> {
-    const registryDoc = new Y.Doc();
-    const registryIdb = new IndexeddbPersistence(SAVED_ROOMS_REGISTRY, registryDoc);
+    const roomKeys = await getRoomRegistryKeys();
 
-    try {
-      await registryIdb.whenSynced;
+    const loadedConfigs = await Promise.all(
+      roomKeys.map(async (roomKey) => {
+        try {
+          return await this.loadRoomConfig(roomKey);
+        } catch {
+          return null;
+        }
+      }),
+    );
 
-      const savedRooms = registryDoc.getMap<string>('savedRooms');
-      const roomKeys = Array.from(savedRooms.keys());
-
-      const loadedConfigs = await Promise.all(
-        roomKeys.map(async (roomKey) => {
-          try {
-            return await this.loadRoomConfig(roomKey);
-          } catch {
-            return null;
-          }
-        }),
-      );
-
-      return loadedConfigs
-        .filter((config): config is StoredRoomConfig => config !== null)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    } finally {
-      await registryIdb.destroy();
-      registryDoc.destroy();
-    }
+    return loadedConfigs
+      .filter((config): config is StoredRoomConfig => config !== null)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   /**
@@ -468,7 +450,23 @@ class YjsConnectionManager {
     // eslint-disable-next-line no-console
     console.log('[YjsConnectionManager] Cleaning up resources...');
 
-      pauseFolder(this.currentState.roomName ?? "")
+      pauseFolder(this.currentState.roomName ?? "");
+
+    if (
+      this.currentState.isHost &&
+      typeof window !== 'undefined' &&
+      window.electronAPI?.stopServer
+    ) {
+      try {
+        window.electronAPI.stopServer();
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(
+          '[YjsConnectionManager] Error stopping signaling server:',
+          error,
+        );
+      }
+    }
 
 
 
@@ -542,6 +540,8 @@ class YjsConnectionManager {
           resolve();
         });
       });
+
+      await removeFromRoomRegistry(roomName);
 
       // eslint-disable-next-line no-console
       console.log('[YjsConnectionManager] Room data cleared:', roomName);

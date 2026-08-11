@@ -23,6 +23,7 @@ require('dotenv').config();
 // import 'src/signalingServer/server.js'; // This starts the server
 const {
   startSignalingServer,
+  stopSignalingServer,
 } = require('src/signalingServer/serverStarter.js');
 // ...rest of your Electron app setup (BrowserWindow, etc.)
 
@@ -140,6 +141,7 @@ const createWindow = async () => {
  */
 
 app.on('window-all-closed', () => {
+  stopSignalingServer();
   // Respect the OSX convention of having the application in memory even
   // after all windows have been closed
   if (process.platform !== 'darwin') {
@@ -147,8 +149,16 @@ app.on('window-all-closed', () => {
   }
 });
 
+app.on('will-quit', () => {
+  stopSignalingServer();
+});
+
 ipcMain.on('start-signaling-server', (event, port: string) => {
   startSignalingServer(port);
+});
+
+ipcMain.on('stop-signaling-server', () => {
+  stopSignalingServer();
 });
 
 // Handle Syncthing API requests from renderer

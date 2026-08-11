@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
   startServer: (port: string) =>
     ipcRenderer.send('start-signaling-server', port),
+  stopServer: () => ipcRenderer.send('stop-signaling-server'),
   syncthingFetch: (url: string, options?: Record<string, any>) =>
     ipcRenderer.invoke('syncthing:fetch', url, options),
   startSyncplay: (host: string, serverPass: string, username: string, room: string, playerPath: string, videoPath: string, enableGui: boolean) =>

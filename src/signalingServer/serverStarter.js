@@ -3,7 +3,43 @@ import { WebSocketServer } from 'ws';
 import http from 'http';
 import * as map from 'lib0/map';
 
+let currentServer = null;
+let currentWss = null;
+
+export function stopSignalingServer() {
+  if (currentWss) {
+    try {
+      currentWss.clients.forEach((client) => {
+        try {
+          client.close();
+        } catch (e) {
+          // ignore
+        }
+      });
+      currentWss.close();
+    } catch (e) {
+      console.error('[SignalingServer] Error closing WebSocket server:', e);
+    }
+    currentWss = null;
+  }
+
+  if (currentServer) {
+    try {
+      currentServer.close();
+    } catch (e) {
+      console.error('[SignalingServer] Error closing HTTP server:', e);
+    }
+    currentServer = null;
+  }
+
+  console.log('[SignalingServer] Signaling server stopped.');
+}
+
 export function startSignalingServer(port = '49999') {
+  if (currentServer || currentWss) {
+    stopSignalingServer();
+  }
+
   const wsReadyStateConnecting = 0;
   const wsReadyStateOpen = 1;
   const wsReadyStateClosing = 2; // eslint-disable-line
@@ -17,6 +53,9 @@ export function startSignalingServer(port = '49999') {
     response.writeHead(200, { 'Content-Type': 'text/plain' });
     response.end('okay');
   });
+
+  currentServer = server;
+  currentWss = wss;
 
   /**
    * Map froms topic-name to set of subscribed clients.

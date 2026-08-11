@@ -218,6 +218,9 @@ function CreateRoom() {
 
   const handleDisconnect = async () => {
     try {
+      if (state.isHost && window.electronAPI?.stopServer) {
+        window.electronAPI.stopServer();
+      }
       await disconnect();
       // eslint-disable-next-line no-alert
       alert('Disconnected from room successfully');
