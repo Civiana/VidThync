@@ -1,19 +1,38 @@
 import { spawn, ChildProcessWithoutNullStreams } from "child_process";
+const os = require('os');
+
+console.log(os.platform());
+// linux/mac CLI
+// usage: syncplay [-h] [--no-gui] [-a hostname] [-n username] [-d] [-g] [--no-store] [-r [room]]
+//                 [-p [password]] [--player-path path] [--language language] [--clear-gui-data] [-v]
+//                 [--load-playlist-from-file loadPlaylistFromFile]
+//                 [file] [options ...]
+
+
+
 
 export class SyncplayManager {
     private process: ChildProcessWithoutNullStreams | null = null;
 
-    start(host: string, username: string, room: string): boolean {
+    private osPlatform: string;
+    constructor() {
+        this.osPlatform = os.platform();
+    }
+
+    start(host: string, serverPass: string, username: string, room: string, playerPath: string, videoPath: string, enableGui: boolean): boolean {
         if (this.process && this.process.exitCode === null) {
             return false;
         }
 
         this.process = spawn(
-            "C:\\Program Files (x86)\\Syncplay\\SyncplayConsole.exe",
+            this.osPlatform === "win32" ? "C:\\Program Files (x86)\\Syncplay\\SyncplayConsole.exe" : "syncplay",
             [
                 "--host", host,
+                "--password", serverPass,
                 "--name", username,
                 "--room", room,
+                enableGui ? "" : "--no-gui",
+                "--player-path", playerPath, videoPath
             ],
             {
                 stdio: ["pipe", "pipe", "pipe"],
@@ -21,34 +40,5 @@ export class SyncplayManager {
         );
 
         return true;
-    }
-
-    stop(): boolean {
-        if (!this.process) return false;
-
-        this.process.kill("SIGINT");
-        this.process = null;
-
-        return true;
-    }
-
-    private sendCommand(command: string): boolean {
-        if (!this.process) return false;
-
-        if (this.process.exitCode !== null) {
-            this.process = null;
-            return false;
-        }
-
-        this.process.stdin.write(`${command}\n`);
-        return true;
-    }
-
-    addVideo(path: string): boolean {
-        return this.sendCommand(`qa ${path}`);
-    }
-
-    playPause(): boolean {
-        return this.sendCommand("p");
     }
 }

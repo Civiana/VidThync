@@ -181,22 +181,15 @@ app
   })
   .catch(console.log);
 
-ipcMain.handle("syncplay:start", () => {
+ipcMain.handle("syncplay:start", (_event,host: string, serverPass: string, username: string, room: string, playerPath: string, videoPath: string, enableGui: boolean ) => {
+  console.log(`Starting Syncplay with host: ${host}, serverPass: ${serverPass}, username: ${username}, room: ${room}, playerPath: ${playerPath}, videoPath: ${videoPath}`, enableGui);
     return syncplay.start(
-        "syncplay.pl:8996",
-        "Civ",
-        "TestRoom"
+        host,
+        serverPass,
+        username,
+        room,
+        playerPath,
+        videoPath,
+        enableGui
     );
-});
-
-ipcMain.handle("syncplay:stop", () => {
-    return syncplay.stop();
-});
-
-ipcMain.handle("syncplay:play", () => {
-    return syncplay.playPause();
-});
-
-ipcMain.handle("syncplay:addVideo", (_event, path: string) => {
-    return syncplay.addVideo(path);
 });

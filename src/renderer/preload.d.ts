@@ -8,6 +8,7 @@ declare global {
     electronAPI: {
       selectFolder: () => Promise<string | null>;
       startServer: (port: string) => void;
+      startSyncplay: (host: string, serverPass: string, username: string, room: string, playerPath: string, videoPath: string, enableGui: boolean) => Promise<boolean>;
       syncThingApiKey: string;
       syncthingFetch: (
         url: string,
