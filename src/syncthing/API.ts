@@ -517,6 +517,10 @@ export async function subscribeToSyncthingEvents(
           event.type === 'StateChanged' ||
           event.type === 'FolderSummary' ||
           event.type === 'FolderCompletion' ||
+          event.type === 'FolderPaused' ||
+          event.type === 'FolderResumed' ||
+          event.type === 'ClusterConfigReceived' ||
+          event.type === 'RemoteIndexUpdated' ||
           event.type === 'PendingDevicesChanged' ||
           event.type === 'DeviceDiscovered' ||
           event.type === 'DeviceConnected' ||
@@ -571,5 +575,21 @@ export async function fetchFolderDevices(folderId: string) {
     return [];
   }
 }
+
+export async function fetchDeviceFolderCompletion(folderId: string, deviceId: string) {
+  try {
+    const requestGET = await getRequestGET();
+    const res = await fetch(
+      `${URL}/db/completion?folder=${encodeURIComponent(folderId)}&device=${encodeURIComponent(deviceId)}`,
+      requestGET,
+    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error('[fetchDeviceFolderCompletion] Error:', err);
+    return null;
+  }
+}
+
 
 

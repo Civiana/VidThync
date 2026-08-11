@@ -11,6 +11,7 @@ import {
   fetchFolderStatus,
   fetchDeviceConnections,
   fetchFolderDevices,
+  fetchDeviceFolderCompletion,
   subscribeToSyncthingEvents,
 } from 'src/syncthing/API';
 import {
@@ -21,12 +22,14 @@ import {
 } from 'src/utils/state';
 import Joins from './Joins';
 import FilesDisplay from '../components/FilesDisplay';
-import { ArrowLeft, Folder, RefreshCw, Trash2, Wifi, WifiOff, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Folder, RefreshCw, Trash2, Wifi, WifiOff, CheckCircle2, PauseCircle } from 'lucide-react';
 
 interface DeviceStatus {
   deviceID: string;
   name?: string;
   connected: boolean;
+  paused: boolean;
+  remoteState: string;
   address?: string;
 }
 
@@ -68,17 +71,22 @@ function CreateRoom() {
       const folderDevices = await fetchFolderDevices(roomKey);
       const connections = await fetchDeviceConnections();
 
-      const devStatusList: DeviceStatus[] = folderDevices
-        .filter((d: any) => d.deviceID !== deviceID)
-        .map((d: any) => {
-          const conn = connections[d.deviceID];
-          return {
-            deviceID: d.deviceID,
-            name: d.deviceID.substring(0, 7),
-            connected: !!(conn && conn.connected),
-            address: conn?.address,
-          };
-        });
+      const devStatusList: DeviceStatus[] = await Promise.all(
+        folderDevices
+          .filter((d: any) => d.deviceID !== deviceID)
+          .map(async (d: any) => {
+            const conn = connections[d.deviceID];
+            const comp = await fetchDeviceFolderCompletion(roomKey, d.deviceID);
+            return {
+              deviceID: d.deviceID,
+              name: d.deviceID.substring(0, 7),
+              connected: !!(conn && conn.connected),
+              paused: !!(conn && conn.paused),
+              remoteState: comp?.remoteState || 'unknown',
+              address: conn?.address,
+            };
+          })
+      );
 
       setRemoteDevicesStatus(devStatusList);
     } catch (err) {
@@ -220,9 +228,21 @@ function CreateRoom() {
     const globalBytes = folderStatus.globalBytes || 0;
     const inSyncBytes = folderStatus.inSyncBytes || 0;
 
+    const hasPausedPeer = remoteDevicesStatus.some(
+      (d) => d.connected && (d.paused || d.remoteState === 'paused'),
+    );
+
     let percentage = 100;
     if (globalBytes > 0) {
       percentage = Math.round((inSyncBytes / globalBytes) * 100);
+    }
+
+    if (hasPausedPeer) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-amber-400 font-semibold">
+          <PauseCircle className="w-4 h-4 text-amber-400" /> Up to date locally (Peer Paused Folder)
+        </span>
+      );
     }
 
     if (state === 'idle' && needBytes === 0) {
@@ -299,20 +319,29 @@ function CreateRoom() {
                   <p className="text-xs text-gray-500 mt-1">No remote devices added yet.</p>
                 ) : (
                   <div className="space-y-1.5 mt-2">
-                    {remoteDevicesStatus.map((dev) => (
-                      <div key={dev.deviceID} className="flex items-center justify-between text-xs">
-                        <span className="truncate font-mono text-gray-300">{dev.deviceID.substring(0, 15)}...</span>
-                        {dev.connected ? (
-                          <span className="flex items-center gap-1 text-green-400 font-medium">
-                            <Wifi className="w-3.5 h-3.5" /> Online
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-gray-500 font-medium">
-                            <WifiOff className="w-3.5 h-3.5" /> Offline
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                    {remoteDevicesStatus.map((dev) => {
+                      const isPaused = dev.paused || dev.remoteState === 'paused';
+                      return (
+                        <div key={dev.deviceID} className="flex items-center justify-between text-xs">
+                          <span className="truncate font-mono text-gray-300">{dev.deviceID.substring(0, 15)}...</span>
+                          {dev.connected ? (
+                            isPaused ? (
+                              <span className="flex items-center gap-1 text-amber-400 font-medium" title="User paused folder">
+                                <PauseCircle className="w-3.5 h-3.5" /> Online (Paused / Disconnected)
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-green-400 font-medium">
+                                <Wifi className="w-3.5 h-3.5" /> Online & Synced
+                              </span>
+                            )
+                          ) : (
+                            <span className="flex items-center gap-1 text-gray-500 font-medium">
+                              <WifiOff className="w-3.5 h-3.5" /> Offline
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -13,6 +13,7 @@ import {
   unPauseFolder,
   fetchFolderStatus,
   fetchDeviceConnections,
+  fetchDeviceFolderCompletion,
   subscribeToSyncthingEvents,
 } from 'src/syncthing/API';
 import {
@@ -22,7 +23,13 @@ import {
   RoomRecord,
 } from 'src/utils/state';
 import FilesDisplay from '../components/FilesDisplay';
-import { ArrowLeft, Folder, Trash2, Wifi, WifiOff, CheckCircle2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Folder, Trash2, Wifi, WifiOff, CheckCircle2, RefreshCw, PauseCircle } from 'lucide-react';
+
+interface HostStatus {
+  connected: boolean;
+  paused: boolean;
+  remoteState: string;
+}
 
 function ConnectToRoom() {
   const navigate = useNavigate();
@@ -40,7 +47,11 @@ function ConnectToRoom() {
   // Active room state
   const [activeRoom, setActiveRoom] = useState<RoomRecord | null>(null);
   const [folderStatus, setFolderStatus] = useState<any>(null);
-  const [isHostOnline, setIsHostOnline] = useState<boolean>(false);
+  const [hostStatus, setHostStatus] = useState<HostStatus>({
+    connected: false,
+    paused: false,
+    remoteState: 'unknown',
+  });
 
   const isMountedRef = useRef(true);
 
@@ -65,7 +76,13 @@ function ConnectToRoom() {
       if (targetHostId) {
         const connections = await fetchDeviceConnections();
         const conn = connections[targetHostId];
-        setIsHostOnline(!!(conn && conn.connected));
+        const comp = await fetchDeviceFolderCompletion(roomKey, targetHostId);
+
+        setHostStatus({
+          connected: !!(conn && conn.connected),
+          paused: !!(conn && conn.paused),
+          remoteState: comp?.remoteState || 'unknown',
+        });
       }
     } catch (err) {
       console.error('[ConnectToRoom] Failed to fetch room status:', err);
@@ -236,9 +253,19 @@ function ConnectToRoom() {
     const globalBytes = folderStatus.globalBytes || 0;
     const inSyncBytes = folderStatus.inSyncBytes || 0;
 
+    const isHostPaused = hostStatus.connected && (hostStatus.paused || hostStatus.remoteState === 'paused');
+
     let percentage = 100;
     if (globalBytes > 0) {
       percentage = Math.round((inSyncBytes / globalBytes) * 100);
+    }
+
+    if (isHostPaused) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-amber-400 font-semibold">
+          <PauseCircle className="w-4 h-4 text-amber-400" /> Up to date locally (Host Paused Folder)
+        </span>
+      );
     }
 
     if (state === 'idle' && needBytes === 0) {
@@ -314,10 +341,16 @@ function ConnectToRoom() {
               <div className="bg-gray-900/70 p-4 rounded-lg border border-gray-700">
                 <h4 className="text-sm font-medium text-gray-400 mb-1">Host Connection Status</h4>
                 <div className="mt-2">
-                  {isHostOnline ? (
-                    <span className="flex items-center gap-1.5 text-green-400 font-semibold">
-                      <Wifi className="w-4 h-4" /> Host Online & Connected
-                    </span>
+                  {hostStatus.connected ? (
+                    hostStatus.paused || hostStatus.remoteState === 'paused' ? (
+                      <span className="flex items-center gap-1.5 text-amber-400 font-semibold" title="Host paused folder">
+                        <PauseCircle className="w-4 h-4" /> Host Online (Folder Paused / Disconnected)
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-green-400 font-semibold">
+                        <Wifi className="w-4 h-4" /> Host Online & Synced
+                      </span>
+                    )
                   ) : (
                     <span className="flex items-center gap-1.5 text-gray-400 font-semibold">
                       <WifiOff className="w-4 h-4" /> Host Offline / Connecting...
