@@ -14,7 +14,7 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
-import { SyncplayManager } from "./SyncplayManager";
+import { SyncplayManager } from "src/syncplay/SyncplayManager";
 
 const syncplay = new SyncplayManager();
 

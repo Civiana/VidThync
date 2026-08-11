@@ -109,7 +109,7 @@ function Hello() {
           const room = 'TestRoom';
           const playerPath = '/usr/bin/mpv';
           const videoPath = '/home/baraa/Downloads/is.mp4';
-          const enableGui = true;
+          const enableGui = false;
 
           const result = await window.electronAPI.startSyncplay(
             host,
