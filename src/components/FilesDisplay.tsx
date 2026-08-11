@@ -1,44 +1,62 @@
 import React, { useEffect, useState } from 'react';
-import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-import { useNavigate } from 'react-router';
-import 'tailwindcss/index.css';
-import { displayFiles } from '../syncthing/API';
+import { displayFiles, subscribeToSyncthingEvents } from '../syncthing/API';
 
 interface FileInfo {
   name: string;
   [key: string]: any; // optional if there may be more fields
 }
 
-type prop= {
-    roomName: string
-}
+type prop = {
+  roomName: string;
+};
 
-function FilesDisplay({roomName}: prop) {
-    const [files, setFiles] = useState<FileInfo[]>([]);
-    useEffect(() => {
-        async function handleDisplayFiles(){
-            const response = await displayFiles(roomName);
-            setFiles(response)
+function FilesDisplay({ roomName }: prop) {
+  const [files, setFiles] = useState<FileInfo[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    async function handleDisplayFiles() {
+      try {
+        const response = await displayFiles(roomName);
+        if (isMounted && Array.isArray(response)) {
+          setFiles(response);
         }
-        handleDisplayFiles();
+      } catch (err) {
+        console.error('[FilesDisplay] Error fetching files:', err);
+      }
+    }
 
-    })
+    handleDisplayFiles();
+
+    subscribeToSyncthingEvents(
+      0,
+      (_event) => {
+        if (isMounted) {
+          handleDisplayFiles();
+        }
+      },
+      controller.signal,
+    );
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [roomName]);
 
   return (
     <div>
-        <ul>
-            {files.map((x) => 
-                <li key={x.name}>
-                 {x.name}
-            </li>
-            )
-            
-            }
-        </ul>
+      <ul>
+        {Array.isArray(files) &&
+          files.map((x) => <li key={x.name}>{x.name}</li>)}
+      </ul>
     </div>
   );
 }
 
-export default FilesDisplay
+export default FilesDisplay;
+
 
 

@@ -8,6 +8,7 @@ import {
   fetchDeviceID,
   pauseFolder,
   unPauseFolder,
+  displayFiles
 } from 'src/syncthing/API';
 import { useYjs } from 'src/yjsRTC/YjsContext';
 import Joins from './Joins';

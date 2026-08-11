@@ -483,3 +483,51 @@ export async function syncthingPortChanging(port: number){
   };
   const res = await fetch(URL + `/config`, requestPUT);
 }
+
+
+
+
+export async function subscribeToSyncthingEvents(
+  lastId = 0,
+  onSyncEvent: (event: any) => void,
+  signal?: AbortSignal,
+) {
+  const key = await initApiKey();
+  let currentId = lastId;
+  while (!signal?.aborted) {
+    try {
+      const response = await fetch(
+        `${URL}/events?since=${currentId}&timeout=60`,
+        {
+          headers: {
+            'X-API-Key': key || '',
+            'Content-Type': 'application/json',
+          },
+          signal,
+        },
+      );
+
+      if (!response.ok || signal?.aborted) break;
+
+      const events = await response.json();
+      for (const event of events) {
+        currentId = event.id;
+        if (
+          event.type === 'ItemFinished' ||
+          event.type === 'StateChanged' ||
+          event.type === 'PendingDevicesChanged' ||
+          event.type === 'DeviceDiscovered' ||
+          event.type === 'DeviceConnected' ||
+          event.type === 'DeviceDisconnected'
+        ) {
+          onSyncEvent(event);
+        }
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError' || signal?.aborted) break;
+      // Wait briefly before retrying if connection drops
+      await new Promise((res) => setTimeout(res, 3000));
+    }
+  }
+}
+
