@@ -24,6 +24,11 @@ export class SyncplayManager {
             return false;
         }
 
+        if (this.osPlatform === "win32"){
+          // should always be disabled for windows because it the CLI and GUI are spereate applications and this would break things
+          enableGui= false;
+        }
+
         this.process = spawn(
             this.osPlatform === "win32" ? "C:\\Program Files (x86)\\Syncplay\\SyncplayConsole.exe" : "syncplay",
             [

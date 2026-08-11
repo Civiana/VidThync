@@ -8,7 +8,6 @@ import {
   fetchDeviceID,
   pauseFolder,
   unPauseFolder,
-  displayFiles
 } from 'src/syncthing/API';
 import { useYjs } from 'src/yjsRTC/YjsContext';
 import Joins from './Joins';
@@ -18,7 +17,7 @@ function CreateRoom() {
   const [roomName, setRoomName] = useState('');
   const [isServerStarting, setIsServerStarting] = useState(false);
   const [customDescription, setCustomDescription] = useState('');
-  const [filePath, setFilePath] = useState('');
+  const [folderPath, setFilePath] = useState('');
   const [deviceID, setDeviceID] = useState('');
   const [signalingPort, setSignalingPort] = useState('49999');
   const [savedHostRooms, setSavedHostRooms] = useState<
@@ -200,7 +199,7 @@ function CreateRoom() {
   const handleCreateRoom = async () => {
     await createRoomWithConfig({
       roomNameValue: roomName,
-      filePathValue: filePath,
+      filePathValue: folderPath,
       signalingPortValue: signalingPort,
       descriptionValue: customDescription,
     });
@@ -319,7 +318,7 @@ function CreateRoom() {
           </Button>
           <Input
             id="folder"
-            value={filePath}
+            value={folderPath}
             placeholder="Folder Path"
             readOnly
             className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
@@ -357,7 +356,7 @@ function CreateRoom() {
           disabled={
             isServerStarting ||
             !roomName.trim() ||
-            !filePath.trim() ||
+            !folderPath.trim() ||
             state.status === 'connecting'
           }
           className="w-full"
@@ -376,7 +375,7 @@ function CreateRoom() {
         {isConnected && getYDoc() !== null && (
           <div className="mt-6">
             <Joins ydoc={getYDoc()!} roomName={`${roomName + deviceID}`} />
-            <FilesDisplay roomName={`${roomName + deviceID}`} />
+            <FilesDisplay roomName={`${roomName + deviceID}`} folderPath={folderPath} />
           </div>
         )}
 
