@@ -4,120 +4,116 @@ import {
   userJoinRequest,
   acceptUsers,
   dismissPendingDevices,
+  subscribeToSyncthingEvents,
 } from 'src/syncthing/API';
-import * as Y from 'yjs';
-// import { useYArray } from '../yjsRTC/YjsContext';
-import { useYDoc } from '../yjsRTC/YjsContext';
+
 interface Devices {
   id: string;
   name: string;
 }
 
-type props = {
-  ydoc: Y.Doc;
+type Props = {
   roomName: string;
+  onDeviceAccepted?: () => void;
 };
 
-function Joins({ ydoc, roomName }: props) {
+function Joins({ roomName, onDeviceAccepted }: Props) {
   const [devices, setDevices] = useState<Devices[]>([]);
-  const [recheck, setRecheck] = useState<boolean>(false);
-  const [deviceArr, setDeviceArr] = useState<string[]>([]);
-  // const arrayData = useYArray<string>('rejectedArr');
-  // const arrayDoc = useYDoc();
 
   useEffect(() => {
-    const newDeviceArr = ydoc.getArray<string>('deviceArr');
-    setDeviceArr(newDeviceArr.toArray());
-    const observer = () => {
-      setDeviceArr(newDeviceArr.toArray());
-    };
-    newDeviceArr.observe(observer);
-    return () => {
-      newDeviceArr.unobserve(observer);
-    };
-  }, []);
-  console.log('deviceArr', deviceArr);
+    let isMounted = true;
+    const controller = new AbortController();
 
-  function deleteAcceptedOrRejectedRequest(deviceId: string) {
-    // Remove from local devices state
-    setDevices((prevDevices) =>
-      prevDevices.filter((device) => device.id !== deviceId),
+    async function fetchDevices() {
+      try {
+        const response = await userJoinRequest();
+        if (isMounted && response && typeof response === 'object') {
+          const deviceList = Object.keys(response).map((key) => ({
+            id: key,
+            name: response[key].name || 'Unnamed Device',
+          }));
+          setDevices(deviceList);
+        }
+      } catch (err) {
+        console.error('[Joins] Failed to fetch pending devices:', err);
+      }
+    }
+
+    fetchDevices();
+
+    subscribeToSyncthingEvents(
+      0,
+      (_event) => {
+        if (isMounted) {
+          fetchDevices();
+        }
+      },
+      controller.signal,
     );
 
-    // Remove from YJS deviceArr
-    const newDeviceArr = ydoc.getArray<string>('deviceArr');
-    const index = newDeviceArr.toArray().indexOf(deviceId);
-    if (index !== -1) {
-      newDeviceArr.delete(index, 1);
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  const handleAccept = async (device: Devices) => {
+    try {
+      await acceptUsers(device.id, device.name, roomName);
+      setDevices((prev) => prev.filter((d) => d.id !== device.id));
+      if (onDeviceAccepted) {
+        onDeviceAccepted();
+      }
+    } catch (err) {
+      console.error('[Joins] Error accepting device:', err);
     }
-  }
+  };
 
-  function addToRejectedArr(deviceId: string) {
-    const rejectedArr = ydoc.getArray<string>('rejectedArr');
-    rejectedArr.push([deviceId]);
-  }
-
-  useEffect(() => {
-    async function fetchDevices() {
-      const response = await userJoinRequest();
-      const deviceList = Object.keys(response).map((key) => ({
-        id: key,
-        name: response[key].name || 'Unnamed Device',
-      }));
-
-      setDevices(deviceList);
+  const handleReject = async (device: Devices) => {
+    try {
+      await dismissPendingDevices(device.id);
+      setDevices((prev) => prev.filter((d) => d.id !== device.id));
+    } catch (err) {
+      console.error('[Joins] Error rejecting device:', err);
     }
-
-    if (deviceArr.length > 0) {
-      fetchDevices();
-
-      const intervalId = setInterval(() => {
-        fetchDevices();
-      }, 3000);
-
-      return () => clearInterval(intervalId);
-    }
-  }, [deviceArr]);
+  };
 
   return (
-    <div>
-      <h2>Joined Devices</h2>
-      <ul>
-        {devices.map((device) => (
-          <li key={device.id} className="group">
-            {device.name} ({device.id})
-            <Button
-              onClick={() => {
-                acceptUsers(device.id, device.name, roomName);
-                deleteAcceptedOrRejectedRequest(device.id);
-              }}
-              className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
+    <div className="bg-gray-800/80 p-4 rounded-xl border border-gray-700">
+      <h3 className="text-md font-semibold text-white mb-3">Pending Device Join Requests</h3>
+      {devices.length === 0 ? (
+        <p className="text-sm text-gray-400">No pending device requests.</p>
+      ) : (
+        <ul className="space-y-2">
+          {devices.map((device) => (
+            <li
+              key={device.id}
+              className="flex items-center justify-between p-3 rounded-lg bg-gray-900 border border-gray-700"
             >
-              Accept
-            </Button>
-            <Button
-              onClick={() => {
-                dismissPendingDevices(device.id);
-                deleteAcceptedOrRejectedRequest(device.id);
-                addToRejectedArr(device.id);
-              }}
-              className="bg-red-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
-            >
-              Reject
-            </Button>
-          </li>
-        ))}
-      </ul>
-      <Button
-        onClick={() => {
-          const newDeviceArr = ydoc.getArray<string>('deviceArr');
-          newDeviceArr.push([
-            '7NJG3YP-PFW7O6O-QXL23UA-6GRJJFX-CWNH7FJ-VORH2O6-ZKSKBFD-CCSI2QH',
-          ]);
-        }}
-      >
-        RECHECK
-      </Button>
+              <div className="truncate mr-4">
+                <span className="font-medium text-white">{device.name}</span>
+                <span className="text-xs text-gray-400 block truncate">{device.id}</span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleAccept(device)}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Accept
+                </Button>
+                <Button
+                  onClick={() => handleReject(device)}
+                  size="sm"
+                  variant="destructive"
+                >
+                  Reject
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -1,401 +1,505 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { fetchDeviceID, addDevicesID } from 'src/syncthing/API';
-import { useYjs } from 'src/yjsRTC/YjsContext';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useYArray } from 'src/yjsRTC/YjsContext';
-import { removeRemoteDevices } from 'src/syncthing/API';
+import {
+  fetchDeviceID,
+  addDevicesID,
+  createOrUpdateFolderSyncThing,
+  acceptPendingFolders,
+  pauseFolder,
+  unPauseFolder,
+  fetchFolderStatus,
+  fetchDeviceConnections,
+  fetchDeviceFolderCompletion,
+  subscribeToSyncthingEvents,
+} from 'src/syncthing/API';
+import {
+  getJoinedRooms,
+  saveJoinedRoom,
+  deleteJoinedRoom,
+  RoomRecord,
+} from 'src/utils/state';
 import FilesDisplay from '../components/FilesDisplay';
+import { ArrowLeft, Folder, Trash2, Wifi, WifiOff, CheckCircle2, RefreshCw, PauseCircle } from 'lucide-react';
+
+interface HostStatus {
+  connected: boolean;
+  paused: boolean;
+  remoteState: string;
+}
+
 function ConnectToRoom() {
+  const navigate = useNavigate();
   const [roomName, setRoomName] = useState('');
   const [deviceID, setDeviceID] = useState('');
   const [hostDeviceId, setHostDeviceId] = useState('');
-  const [signalingUrl, setSignalingUrl] = useState('localhost');
-  const [signalingPort, setSignalingPort] = useState('49999');
+  const [hostAddress, setHostAddress] = useState('localhost');
   const [hostPort, setHostPort] = useState('22000');
-  const rejectedArr = useYArray<string>('rejectedArr');
-  const [directOrDynamic, setDirectOrDynamic] = useState<'dynamic' | 'direct'>(
-    'dynamic',
-  );
-  const [filePath, setFilePath] = useState('');
+  const [directOrDynamic, setDirectOrDynamic] = useState<'dynamic' | 'direct'>('dynamic');
+  const [folderPath, setFolderPath] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [savedPeerRooms, setSavedPeerRooms] = useState<RoomRecord[]>([]);
+  const [isLoadingSavedRooms, setIsLoadingSavedRooms] = useState(true);
 
-  const navigate = useNavigate();
-  const { connect, disconnect, state, isConnected, getYDoc } = useYjs();
+  // Active room state
+  const [activeRoom, setActiveRoom] = useState<RoomRecord | null>(null);
+  const [folderStatus, setFolderStatus] = useState<any>(null);
+  const [hostStatus, setHostStatus] = useState<HostStatus>({
+    connected: false,
+    paused: false,
+    remoteState: 'unknown',
+  });
 
-  const handlePickFolder = async () => {
-    const selectedPath = await window.electronAPI.selectFolder();
-    if (selectedPath) {
-      setFilePath(selectedPath);
+  const isMountedRef = useRef(true);
+
+  const refreshSavedRooms = async () => {
+    try {
+      setIsLoadingSavedRooms(true);
+      const rooms = await getJoinedRooms();
+      setSavedPeerRooms(rooms);
+    } catch (error) {
+      console.error('[ConnectToRoom] Failed to load saved rooms:', error);
+    } finally {
+      setIsLoadingSavedRooms(false);
+    }
+  };
+
+  const updateActiveRoomStatus = async (roomKey: string, targetHostId: string) => {
+    if (!roomKey) return;
+    try {
+      const status = await fetchFolderStatus(roomKey);
+      setFolderStatus(status);
+
+      if (targetHostId) {
+        const connections = await fetchDeviceConnections();
+        const conn = connections[targetHostId];
+        const comp = await fetchDeviceFolderCompletion(roomKey, targetHostId);
+
+        setHostStatus({
+          connected: !!(conn && conn.connected),
+          paused: !!(conn && conn.paused),
+          remoteState: comp?.remoteState || 'unknown',
+        });
+      }
+    } catch (err) {
+      console.error('[ConnectToRoom] Failed to fetch room status:', err);
     }
   };
 
   useEffect(() => {
-    async function deviceFetch() {
-      setDeviceID(await fetchDeviceID());
+    isMountedRef.current = true;
+    async function init() {
+      const id = await fetchDeviceID();
+      setDeviceID(id);
+      await refreshSavedRooms();
     }
-    deviceFetch();
-  }, []);
+    init();
 
-  // Cleanup on unmount
-  useEffect(() => {
     return () => {
-      // Note: We don't auto-disconnect here to allow connection to persist
-      // User must explicitly disconnect via the debug panel or disconnect button
+      isMountedRef.current = false;
     };
   }, []);
 
-  const handleConnectToCustomRoom = async () => {
-    // Validation
+  // Poll / Subscribe to Syncthing events for active connected room
+  useEffect(() => {
+    if (!activeRoom) return;
+
+    const controller = new AbortController();
+    updateActiveRoomStatus(activeRoom.roomKey, activeRoom.hostDeviceId || '');
+
+    subscribeToSyncthingEvents(
+      0,
+      () => {
+        if (isMountedRef.current && activeRoom) {
+          updateActiveRoomStatus(activeRoom.roomKey, activeRoom.hostDeviceId || '');
+        }
+      },
+      controller.signal,
+    );
+
+    const interval = setInterval(() => {
+      if (activeRoom) {
+        updateActiveRoomStatus(activeRoom.roomKey, activeRoom.hostDeviceId || '');
+      }
+    }, 5000);
+
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, [activeRoom]);
+
+  const handlePickFolder = async () => {
+    const selectedPath = await window.electronAPI.selectFolder();
+    if (selectedPath) {
+      setFolderPath(selectedPath);
+    }
+  };
+
+  const handleConnectRoom = async () => {
     if (!roomName.trim()) {
-      // eslint-disable-next-line no-alert
       alert('Please enter a room name');
       return;
     }
-    if (!signalingUrl.trim()) {
-      // eslint-disable-next-line no-alert
-      alert('Please enter a signaling server URL');
-      return;
-    }
     if (!hostDeviceId.trim()) {
-      // eslint-disable-next-line no-alert
       alert('Please enter the host device ID');
       return;
     }
-    if (!filePath.trim()) {
-      // eslint-disable-next-line no-alert
+    if (!folderPath.trim()) {
       alert('Please select a folder path');
       return;
-    }
-
-    // Check if already connected to a different room
-    if (isConnected && state.roomName !== roomName) {
-      // eslint-disable-next-line no-alert
-      const shouldDisconnect = window.confirm(
-        `You are already connected to room "${state.roomName}". Do you want to disconnect and join a new room?`,
-      );
-      if (!shouldDisconnect) {
-        return;
-      }
-      await disconnect();
     }
 
     setIsConnecting(true);
 
     try {
-      // Add the host device to Syncthing
-      // eslint-disable-next-line no-console
-      console.log('[ConnectToRoom] Adding host device to Syncthing...');
+      const cleanHostId = hostDeviceId.trim();
+      const cleanRoomName = roomName.trim();
+      const roomKey = `${cleanRoomName}${cleanHostId}`;
+
+      // 1. Add host device to local Syncthing
       await addDevicesID(
         '/config',
-        hostDeviceId,
-        signalingUrl,
-        hostPort,
-        filePath,
+        cleanHostId,
+        hostAddress.trim() || 'localhost',
+        hostPort.trim() || '22000',
+        folderPath,
         directOrDynamic,
       );
 
-      // eslint-disable-next-line no-console
-      console.log('[ConnectToRoom] Connecting to room:', roomName);
+      // 2. Create folder locally shared with host device
+      await createOrUpdateFolderSyncThing(
+        '/config/folders',
+        roomKey,
+        folderPath,
+        roomKey,
+        [cleanHostId],
+      );
 
-      // Connect to the room using the connection manager
-      await connect({
-        roomName: `${roomName + hostDeviceId}`,
-        signalingUrl,
-        signalingPort,
+      // 3. Accept pending folder invitations
+      await acceptPendingFolders(roomKey);
+
+      // 4. Unpause folder
+      await unPauseFolder(roomKey);
+
+      const roomRecord: RoomRecord = {
+        roomName: cleanRoomName,
+        roomKey,
+        filePath: folderPath,
         isHost: false,
-      });
+        hostDeviceId: cleanHostId,
+        hostPort: hostPort.trim(),
+        signalingUrl: hostAddress.trim(),
+        connectionMode: directOrDynamic,
+        createdAt: new Date().toISOString(),
+      };
 
-      // Add current device ID to the shared array for host to see
-      const ydoc = getYDoc();
-      if (ydoc) {
-        const yarray = ydoc.getArray<string>('IDs');
-        yarray.push([deviceID]);
+      await saveJoinedRoom(roomRecord);
+      await refreshSavedRooms();
+      setActiveRoom(roomRecord);
 
-        const deviceArr = ydoc.getArray<string>('deviceArr');
-        deviceArr.push([deviceID]);
-
-        // eslint-disable-next-line no-console
-        console.log('[ConnectToRoom] Added device ID to shared arrays');
-      }
-
-      // eslint-disable-next-line no-console
-      console.log(
-        `[ConnectToRoom] Successfully connected to room: ${roomName}`,
-      );
-
-      // eslint-disable-next-line no-alert
-      alert(`Successfully connected to room "${roomName}"!`);
+      alert(`Successfully connected to room "${cleanRoomName}"!`);
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error('[ConnectToRoom] Connection error:', error);
-      // eslint-disable-next-line no-alert
-      alert(
-        `Failed to connect to room: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      alert(`Failed to connect to room: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsConnecting(false);
     }
   };
 
-  console.log('Rejected Array:', rejectedArr);
-
-  useEffect(() => {
-    if (rejectedArr.length > 0) {
-      rejectedArr.find((id, i) => {
-        if (id === deviceID) {
-          // eslint-disable-next-line no-alert
-          alert('Your connection request was rejected by the host.');
-          const reject = getYDoc();
-          const rejArr = reject?.getArray<string>('rejectedArr');
-          rejArr?.delete(i, 1);
-          removeRemoteDevices(deviceID);
-          disconnect();
-        }
-      });
-    }
-  }, [rejectedArr]);
-
-  const handleDisconnect = async () => {
+  const handleConnectSavedRoom = async (room: RoomRecord) => {
     try {
-      await disconnect();
-      // eslint-disable-next-line no-alert
-      alert('Disconnected from room successfully');
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('[ConnectToRoom] Error disconnecting:', error);
-      // eslint-disable-next-line no-alert
-      alert('Failed to disconnect');
+      await unPauseFolder(room.roomKey);
+      if (room.hostDeviceId) {
+        await acceptPendingFolders(room.roomKey);
+      }
+      setActiveRoom(room);
+      setRoomName(room.roomName);
+      setHostDeviceId(room.hostDeviceId || '');
+      setFolderPath(room.filePath);
+      setHostAddress(room.signalingUrl || 'localhost');
+      setHostPort(room.hostPort || '22000');
+      setDirectOrDynamic(room.connectionMode === 'direct' ? 'direct' : 'dynamic');
+    } catch (err) {
+      console.error('[ConnectToRoom] Error connecting to saved room:', err);
     }
   };
 
+  const handleDeleteSavedRoom = async (roomKey: string) => {
+    if (window.confirm('Are you sure you want to remove this saved room?')) {
+      await deleteJoinedRoom(roomKey);
+      if (activeRoom?.roomKey === roomKey) {
+        setActiveRoom(null);
+      }
+      await refreshSavedRooms();
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (activeRoom) {
+      await pauseFolder(activeRoom.roomKey);
+      setActiveRoom(null);
+    }
+  };
+
+  const renderSyncStatus = () => {
+    if (!folderStatus) return <span className="text-gray-400">Loading sync status...</span>;
+
+    const state = folderStatus.state || 'unknown';
+    const needBytes = folderStatus.needBytes || 0;
+    const globalBytes = folderStatus.globalBytes || 0;
+    const inSyncBytes = folderStatus.inSyncBytes || 0;
+
+    const isHostPaused = hostStatus.connected && (hostStatus.paused || hostStatus.remoteState === 'paused');
+
+    let percentage = 100;
+    if (globalBytes > 0) {
+      percentage = Math.round((inSyncBytes / globalBytes) * 100);
+    }
+
+    if (isHostPaused) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-amber-400 font-semibold">
+          <PauseCircle className="w-4 h-4 text-amber-400" /> Up to date locally (Host Paused Folder)
+        </span>
+      );
+    }
+
+    if (state === 'idle' && needBytes === 0) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-green-400 font-semibold">
+          <CheckCircle2 className="w-4 h-4 text-green-400" /> Up to date (Idle)
+        </span>
+      );
+    }
+
+    if (state === 'syncing' || needBytes > 0) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-blue-400 font-semibold">
+          <RefreshCw className="w-4 h-4 animate-spin text-blue-400" /> Syncing ({percentage}%)
+        </span>
+      );
+    }
+
+    return (
+      <span className="text-yellow-400 font-semibold capitalize">
+        Status: {state}
+      </span>
+    );
+  };
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-gray-700 text-white p-8 overflow-auto">
-      <Button onClick={() => navigate(-1)}>&lt; Back</Button>
-
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">Join a Room</h1>
-        <p className="text-gray-400">Connect to an existing VideoThync room</p>
-        <p className="text-gray-400">Your Device ID: {deviceID}</p>
-      </div>
-
-      {/* Connection Status Banner */}
-      {isConnected && (
-        <div className="mb-4 p-4 bg-green-900/30 border border-green-500 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-green-400">
-                Currently Connected to: {state.roomName}
-              </p>
-              <p className="text-sm text-gray-400">
-                Peers: {state.peersConnected} | Role:{' '}
-                {state.isHost ? 'Host' : 'Client'}
-              </p>
-            </div>
-            <Button onClick={handleDisconnect} variant="destructive" size="sm">
-              Disconnect
-            </Button>
+    <div className="flex flex-col h-screen w-screen bg-gray-900 text-white p-8 overflow-auto">
+      <div className="max-w-4xl mx-auto w-full space-y-6">
+        <div className="flex items-center justify-between">
+          <Button
+            onClick={() => navigate('/')}
+            variant="outline"
+            className="flex items-center gap-2 bg-gray-800 border-gray-700 hover:bg-gray-700 text-white"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Home
+          </Button>
+          <div className="text-right">
+            <h1 className="text-2xl font-bold">Connect to Room</h1>
+            <p className="text-xs text-gray-400">Your Device ID: {deviceID}</p>
           </div>
         </div>
-      )}
 
-      <div className="space-y-6">
-        {/* Connect to Custom Room */}
-        <div className="bg-gray-800 p-4 rounded-lg">
-          <h3 className="text-lg font-medium mb-4">Connect to Room</h3>
+        {/* Active Connected Room View */}
+        {activeRoom ? (
+          <div className="bg-gray-800 border border-green-500/40 rounded-xl p-6 shadow-xl space-y-6">
+            <div className="flex items-center justify-between border-b border-gray-700 pb-4">
+              <div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-500/20 text-green-400 uppercase tracking-wide">
+                  Connected Room
+                </span>
+                <h2 className="text-2xl font-bold text-white mt-1">{activeRoom.roomName}</h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Host ID: {activeRoom.hostDeviceId || 'Unknown'} | Folder: {activeRoom.filePath}
+                </p>
+              </div>
+              <Button onClick={handleDisconnect} variant="destructive" size="sm">
+                Disconnect
+              </Button>
+            </div>
 
-          <div className="space-y-3">
+            {/* Status indicators */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gray-900/70 p-4 rounded-lg border border-gray-700">
+                <h4 className="text-sm font-medium text-gray-400 mb-1">Folder Sync Status</h4>
+                <div className="text-base">{renderSyncStatus()}</div>
+                {folderStatus && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Files Synced: {folderStatus.inSyncFiles || 0} / {folderStatus.globalFiles || 0}
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-gray-900/70 p-4 rounded-lg border border-gray-700">
+                <h4 className="text-sm font-medium text-gray-400 mb-1">Host Connection Status</h4>
+                <div className="mt-2">
+                  {hostStatus.connected ? (
+                    hostStatus.paused || hostStatus.remoteState === 'paused' ? (
+                      <span className="flex items-center gap-1.5 text-amber-400 font-semibold" title="Host paused folder">
+                        <PauseCircle className="w-4 h-4" /> Host Online (Folder Paused / Disconnected)
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-green-400 font-semibold">
+                        <Wifi className="w-4 h-4" /> Host Online & Synced
+                      </span>
+                    )
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-gray-400 font-semibold">
+                      <WifiOff className="w-4 h-4" /> Host Offline / Connecting...
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Synced Files & Syncplay Launcher */}
+            <FilesDisplay
+              roomName={activeRoom.roomKey}
+              folderPath={activeRoom.filePath}
+            />
+          </div>
+        ) : (
+          /* Connect Room Form */
+          <div className="bg-gray-800/80 p-6 rounded-xl border border-gray-700 shadow-xl space-y-4">
+            <h2 className="text-xl font-semibold mb-2">Join an Existing Room</h2>
+
             <div>
-              <Label className="block text-sm font-medium mb-2">
-                Room Name
-              </Label>
+              <Label className="block text-sm font-medium mb-2 text-gray-200">Room Name</Label>
               <Input
                 type="text"
                 value={roomName}
                 onChange={(e) => setRoomName(e.target.value)}
                 placeholder="Enter room name"
                 disabled={isConnecting}
-                className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                className="bg-gray-900 border-gray-700 text-white placeholder-gray-500"
               />
             </div>
 
             <div>
-              <Label className="block text-sm font-medium mb-2">
-                Host Device ID
-              </Label>
+              <Label className="block text-sm font-medium mb-2 text-gray-200">Host Device ID</Label>
               <Input
                 type="text"
                 value={hostDeviceId}
                 onChange={(e) => setHostDeviceId(e.target.value)}
-                placeholder="Enter host device ID"
+                placeholder="Enter host Syncthing device ID"
                 disabled={isConnecting}
-                className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                className="bg-gray-900 border-gray-700 text-white placeholder-gray-500"
               />
-              <p className="text-xs text-gray-400 mt-1">
-                The device ID of the person hosting the room
-              </p>
             </div>
 
             <div>
-              <Label className="block text-sm font-medium mb-2">
-                Path to folder
-              </Label>
-              <Button
-                onClick={handlePickFolder}
-                className="mb-2"
-                disabled={isConnecting}
-              >
-                Browse
-              </Button>
-              <Input
-                id="folder"
-                value={filePath}
-                placeholder="Folder Path"
-                readOnly
-                className="w-full p-3 rounded-md bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Local folder where files will be synced
-              </p>
-            </div>
-
-            <div>
-              <Label className="block text-sm font-medium mb-2">Domain</Label>
-              <Input
-                type="text"
-                value={signalingUrl}
-                onChange={(e) => setSignalingUrl(e.target.value)}
-                placeholder="192.168.1.100 or localhost"
-                disabled={isConnecting}
-                className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                The IP address or domain of the host (without ws:// prefix)
-              </p>
-            </div>
-
-            <div>
-              <Label className="block text-sm font-medium mb-2">
-                Host port
-              </Label>
-              <Input
-                type="text"
-                value={signalingPort}
-                onChange={(e) => setSignalingPort(e.target.value)}
-                placeholder="49999"
-                disabled={isConnecting}
-                className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Enter the port of the host&apos;s signaling server (default
-                port: 49999)
-              </p>
-            </div>
-
-            <div className="flex space-x-2">
-              <Checkbox
-                checked={directOrDynamic === 'direct'}
-                onClick={() => {
-                  if (directOrDynamic === 'direct') {
-                    setDirectOrDynamic('dynamic');
-                  } else {
-                    setDirectOrDynamic('direct');
-                  }
-                }}
-                disabled={isConnecting}
-              />
-              <div className="flex flex-col">
-                <Label>
-                  Make Syncthing use a direct connection to the host instead of
-                  relay servers
-                </Label>
-                <p className="text-muted-foreground text-sm">
-                  note: This only works if the host already has a port opened
-                  for Syncthing.
-                </p>
+              <Label className="block text-sm font-medium mb-2 text-gray-200">Local Folder Path</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={folderPath}
+                  placeholder="Select local folder for synced files"
+                  readOnly
+                  className="flex-1 bg-gray-900 border-gray-700 text-white placeholder-gray-500"
+                />
+                <Button onClick={handlePickFolder} disabled={isConnecting} className="bg-blue-600 hover:bg-blue-700 text-white flex gap-1.5 items-center">
+                  <Folder className="w-4 h-4" /> Browse
+                </Button>
               </div>
             </div>
 
             <div>
-              <Label className="block text-sm font-medium mb-2">
-                Syncthing file port
-              </Label>
+              <Label className="block text-sm font-medium mb-2 text-gray-200">Host Address / Domain (Optional)</Label>
               <Input
                 type="text"
-                value={hostPort}
-                disabled={directOrDynamic === 'dynamic' || isConnecting}
-                onChange={(e) => setHostPort(e.target.value)}
-                placeholder="22000"
-                className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                value={hostAddress}
+                onChange={(e) => setHostAddress(e.target.value)}
+                placeholder="localhost or IP address (e.g. 192.168.1.50)"
+                disabled={isConnecting}
+                className="bg-gray-900 border-gray-700 text-white placeholder-gray-500"
               />
-              <p className="text-xs text-gray-400 mt-1">
-                Enter the port of the host file syncing server (default port:
-                22000)
-              </p>
             </div>
 
-            <div className="bg-gray-900 p-4 rounded-md border border-gray-600">
-              <p className="text-sm text-gray-300 mb-2">
-                <strong>Connection Info:</strong>
-              </p>
-              <p className="text-xs text-gray-400 mb-1">
-                You will connect to: ws://{signalingUrl}:{signalingPort}
-              </p>
-              <p className="text-xs text-gray-400">
-                File sync will use:{' '}
-                {directOrDynamic === 'direct'
-                  ? `tcp://${signalingUrl}:${hostPort}`
-                  : 'dynamic relay servers'}
-              </p>
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox
+                id="directConn"
+                checked={directOrDynamic === 'direct'}
+                onCheckedChange={(checked) => setDirectOrDynamic(checked ? 'direct' : 'dynamic')}
+                disabled={isConnecting}
+              />
+              <Label htmlFor="directConn" className="text-sm font-normal text-gray-300 cursor-pointer">
+                Use direct connection to host instead of relay servers
+              </Label>
             </div>
+
+            {directOrDynamic === 'direct' && (
+              <div>
+                <Label className="block text-sm font-medium mb-2 text-gray-200">Host Syncthing File Port</Label>
+                <Input
+                  type="text"
+                  value={hostPort}
+                  onChange={(e) => setHostPort(e.target.value)}
+                  placeholder="22000"
+                  disabled={isConnecting}
+                  className="bg-gray-900 border-gray-700 text-white placeholder-gray-500"
+                />
+              </div>
+            )}
 
             <Button
-              onClick={handleConnectToCustomRoom}
-              disabled={
-                !roomName.trim() ||
-                !signalingUrl.trim() ||
-                !hostDeviceId.trim() ||
-                !filePath.trim() ||
-                isConnecting ||
-                state.status === 'connecting'
-              }
-              className="w-full"
+              onClick={handleConnectRoom}
+              disabled={isConnecting || !roomName.trim() || !hostDeviceId.trim() || !folderPath.trim()}
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-3 font-semibold mt-4"
               size="lg"
             >
-              {(() => {
-                if (isConnecting || state.status === 'connecting') {
-                  return 'Connecting...';
-                }
-                if (isConnected && state.roomName === roomName) {
-                  return 'Already Connected';
-                }
-                return 'Connect to Room';
-              })()}
+              {isConnecting ? 'Connecting...' : 'Connect to Room'}
             </Button>
-
-            {isConnected && (
-              <>
-                <Button
-                  onClick={handleDisconnect}
-                  variant="destructive"
-                  className="w-full"
-                  size="lg"
-                >
-                  Disconnect from Room
-                </Button>
-
-                <FilesDisplay roomName={`${roomName + hostDeviceId}`} />
-              </>
-            )}
           </div>
-        </div>
-      </div>
+        )}
 
-      <div className="text-center mt-8 text-gray-500 text-sm">
-        <p>Use the debug panel (top-right) to monitor your connection status</p>
+        {/* Saved Peer Rooms */}
+        <div className="bg-gray-800/80 p-6 rounded-xl border border-gray-700 shadow-xl mt-6">
+          <h3 className="text-lg font-semibold mb-4 text-white">Saved Joined Rooms</h3>
+          {isLoadingSavedRooms ? (
+            <p className="text-sm text-gray-400">Loading saved rooms...</p>
+          ) : savedPeerRooms.length === 0 ? (
+            <p className="text-sm text-gray-500">No saved joined rooms yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {savedPeerRooms.map((room) => (
+                <div
+                  key={room.roomKey}
+                  className="flex items-center justify-between p-4 rounded-lg bg-gray-900 border border-gray-700"
+                >
+                  <div>
+                    <h4 className="font-semibold text-white">{room.roomName}</h4>
+                    <p className="text-xs text-gray-400">Host ID: {room.hostDeviceId || 'N/A'}</p>
+                    <p className="text-xs text-gray-400 truncate max-w-md">Folder: {room.filePath}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleConnectSavedRoom(room)}
+                      disabled={activeRoom?.roomKey === room.roomKey}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      size="sm"
+                    >
+                      {activeRoom?.roomKey === room.roomKey ? 'Connected' : 'Connect'}
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteSavedRoom(room.roomKey)}
+                      variant="destructive"
+                      size="sm"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

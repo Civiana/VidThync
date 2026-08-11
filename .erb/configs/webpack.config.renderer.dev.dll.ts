@@ -13,6 +13,9 @@ import checkNodeEnv from '../scripts/check-node-env';
 checkNodeEnv('development');
 
 const dist = webpackPaths.dllPath;
+const dllDependencies = Object.keys(dependencies || {}).filter(
+  (dependency) => dependency !== 'tw-animate-css',
+);
 
 const configuration: webpack.Configuration = {
   context: webpackPaths.rootPath,
@@ -31,7 +34,7 @@ const configuration: webpack.Configuration = {
   module: require('./webpack.config.renderer.dev').default.module,
 
   entry: {
-    renderer: Object.keys(dependencies || {}),
+    renderer: dllDependencies,
   },
 
   output: {
