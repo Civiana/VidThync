@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Film, Play, CheckCircle2 } from 'lucide-react';
 import { displayFiles, subscribeToSyncthingEvents } from '../syncthing/API';
+import { getAppSettings } from 'src/utils/state';
 
 interface FileInfo {
   name: string;
@@ -95,24 +96,29 @@ function FilesDisplay({ roomName, onSelectFile, folderPath }: prop) {
       onSelectFile(file);
     }
 
+    try {
+      const settings = await getAppSettings();
+      const host = settings.syncplayHostURL || 'syncplay.pl:8996';
+      const serverPass = settings.serverpass || '';
+      const username = settings.username || 'User';
+      const room = roomName || 'DefaultRoom';
+      const playerPath = settings.playerPath || '/usr/bin/mpv';
+      const videoPath = folderPath ? `${folderPath}/${file.name}` : file.name;
+      const enableGui = false;
 
-          const host = 'syncplay.pl:8996';
-          const serverPass = '';
-          const username = 'Civ';
-          const room = 'TestRoom';
-          const playerPath = '/usr/bin/mpv';
-          const videoPath = `${folderPath}/${file.name}`;
-          const enableGui = false;
-
-          const result = await window.electronAPI.startSyncplay(
-            host,
-            serverPass,
-            username,
-            room,
-            playerPath,
-            videoPath,
-            enableGui,
-          );
+      const result = await window.electronAPI.startSyncplay(
+        host,
+        serverPass,
+        username,
+        room,
+        playerPath,
+        videoPath,
+        enableGui,
+      );
+      console.log('[FilesDisplay] Syncplay started:', result);
+    } catch (err) {
+      console.error('[FilesDisplay] Failed to start Syncplay:', err);
+    }
   };
 
   return (

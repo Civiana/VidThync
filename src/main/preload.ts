@@ -25,13 +25,17 @@ const electronHandler = {
 };
 contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
-  startServer: (port: string) =>
-    ipcRenderer.send('start-signaling-server', port),
-  stopServer: () => ipcRenderer.send('stop-signaling-server'),
+  selectFile: () => ipcRenderer.invoke('dialog:selectFile'),
   syncthingFetch: (url: string, options?: Record<string, any>) =>
     ipcRenderer.invoke('syncthing:fetch', url, options),
   startSyncplay: (host: string, serverPass: string, username: string, room: string, playerPath: string, videoPath: string, enableGui: boolean) =>
-    ipcRenderer.invoke('syncplay:start', host, serverPass, username, room, playerPath, videoPath, enableGui)
+    ipcRenderer.invoke('syncplay:start', host, serverPass, username, room, playerPath, videoPath, enableGui),
+  store: {
+    get: (key: string) => ipcRenderer.invoke('store:get', key),
+    set: (key: string, value: any) => ipcRenderer.invoke('store:set', key, value),
+    delete: (key: string) => ipcRenderer.invoke('store:delete', key),
+    getAll: () => ipcRenderer.invoke('store:getAll'),
+  },
 });
 
 contextBridge.exposeInMainWorld('electron', electronHandler);

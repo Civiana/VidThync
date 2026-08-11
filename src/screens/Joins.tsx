@@ -6,19 +6,18 @@ import {
   dismissPendingDevices,
   subscribeToSyncthingEvents,
 } from 'src/syncthing/API';
-import * as Y from 'yjs';
 
 interface Devices {
   id: string;
   name: string;
 }
 
-type props = {
-  ydoc?: Y.Doc;
+type Props = {
   roomName: string;
+  onDeviceAccepted?: () => void;
 };
 
-function Joins({ ydoc, roomName }: props) {
+function Joins({ roomName, onDeviceAccepted }: Props) {
   const [devices, setDevices] = useState<Devices[]>([]);
 
   useEffect(() => {
@@ -62,12 +61,8 @@ function Joins({ ydoc, roomName }: props) {
     try {
       await acceptUsers(device.id, device.name, roomName);
       setDevices((prev) => prev.filter((d) => d.id !== device.id));
-      if (ydoc) {
-        const newDeviceArr = ydoc.getArray<string>('deviceArr');
-        const index = newDeviceArr.toArray().indexOf(device.id);
-        if (index !== -1) {
-          newDeviceArr.delete(index, 1);
-        }
+      if (onDeviceAccepted) {
+        onDeviceAccepted();
       }
     } catch (err) {
       console.error('[Joins] Error accepting device:', err);
@@ -78,42 +73,43 @@ function Joins({ ydoc, roomName }: props) {
     try {
       await dismissPendingDevices(device.id);
       setDevices((prev) => prev.filter((d) => d.id !== device.id));
-      if (ydoc) {
-        const rejectedArr = ydoc.getArray<string>('rejectedArr');
-        rejectedArr.push([device.id]);
-        const newDeviceArr = ydoc.getArray<string>('deviceArr');
-        const index = newDeviceArr.toArray().indexOf(device.id);
-        if (index !== -1) {
-          newDeviceArr.delete(index, 1);
-        }
-      }
     } catch (err) {
       console.error('[Joins] Error rejecting device:', err);
     }
   };
 
   return (
-    <div>
-      <h2>Joined Devices</h2>
+    <div className="bg-gray-800/80 p-4 rounded-xl border border-gray-700">
+      <h3 className="text-md font-semibold text-white mb-3">Pending Device Join Requests</h3>
       {devices.length === 0 ? (
         <p className="text-sm text-gray-400">No pending device requests.</p>
       ) : (
-        <ul>
+        <ul className="space-y-2">
           {devices.map((device) => (
-            <li key={device.id} className="group">
-              {device.name} ({device.id})
-              <Button
-                onClick={() => handleAccept(device)}
-                className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded ml-2"
-              >
-                Accept
-              </Button>
-              <Button
-                onClick={() => handleReject(device)}
-                className="bg-red-500 hover:bg-red-600 hover:text-white text-white border border-red-700 px-4 py-2 rounded ml-2"
-              >
-                Reject
-              </Button>
+            <li
+              key={device.id}
+              className="flex items-center justify-between p-3 rounded-lg bg-gray-900 border border-gray-700"
+            >
+              <div className="truncate mr-4">
+                <span className="font-medium text-white">{device.name}</span>
+                <span className="text-xs text-gray-400 block truncate">{device.id}</span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleAccept(device)}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Accept
+                </Button>
+                <Button
+                  onClick={() => handleReject(device)}
+                  size="sm"
+                  variant="destructive"
+                >
+                  Reject
+                </Button>
+              </div>
             </li>
           ))}
         </ul>
@@ -123,4 +119,3 @@ function Joins({ ydoc, roomName }: props) {
 }
 
 export default Joins;
-

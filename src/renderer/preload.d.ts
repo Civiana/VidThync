@@ -7,8 +7,7 @@ declare global {
     electron: ElectronHandler;
     electronAPI: {
       selectFolder: () => Promise<string | null>;
-      startServer: (port: string) => void;
-      stopServer: () => void;
+      selectFile: () => Promise<string | null>;
       startSyncplay: (host: string, serverPass: string, username: string, room: string, playerPath: string, videoPath: string, enableGui: boolean) => Promise<boolean>;
       syncThingApiKey: string;
       syncthingFetch: (
@@ -20,6 +19,12 @@ declare global {
         status: number;
         error?: string;
       }>;
+      store: {
+        get: (key: string) => Promise<any>;
+        set: (key: string, value: any) => Promise<boolean>;
+        delete: (key: string) => Promise<boolean>;
+        getAll: () => Promise<Record<string, any>>;
+      };
     };
   }
 }

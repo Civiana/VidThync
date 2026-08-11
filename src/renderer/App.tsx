@@ -4,18 +4,16 @@ import { useNavigate } from 'react-router';
 import 'tailwindcss/index.css';
 import './App.css';
 import CreateRoom from 'src/screens/CreateRoom';
+import ConnectToRoom from 'src/screens/ConnectToRoom';
+import Settings from 'src/screens/Settings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  saveSyncthingApiKey,
-  loadSyncthingApiKey,
-} from 'src/utils/apiKeyStorage';
-import { fetchDeviceID,createOrUpdateFolderSyncThing } from 'src/syncthing/API';
-import ConnectToRoom from '../screens/ConnectToRoom';
-import FilesDisplay from '../components/FilesDisplay';
-import DebugYjs from '../components/DebugYjs';
-import { YjsProvider } from '../yjsRTC/YjsContext';
-import { Files } from 'lucide-react';
+  getSyncthingApiKey,
+  setSyncthingApiKey,
+} from 'src/utils/state';
+import { fetchDeviceID } from 'src/syncthing/API';
+import { Settings as SettingsIcon } from 'lucide-react';
 
 function Hello() {
   const navigate = useNavigate();
@@ -35,11 +33,11 @@ function Hello() {
     }
   };
 
-  // Load API key from IndexedDB on mount
+  // Load API key from electron-store on mount
   useEffect(() => {
     async function loadApiKey() {
       try {
-        const storedKey = await loadSyncthingApiKey();
+        const storedKey = await getSyncthingApiKey();
         if (storedKey) {
           setSyncThingApi(storedKey);
         }
@@ -52,10 +50,10 @@ function Hello() {
     loadApiKey();
   }, []);
 
-  // Save API key to IndexedDB whenever it changes
+  // Save API key to electron-store whenever it changes
   useEffect(() => {
     if (syncThingApi && !isLoading) {
-      saveSyncthingApiKey(syncThingApi)
+      setSyncthingApiKey(syncThingApi)
         .catch((e) => {
           console.error('Failed to save API key:', e);
         })
@@ -67,84 +65,69 @@ function Hello() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen w-screen bg-gray-600">
-        <p className="text-white">Loading...</p>
+      <div className="flex items-center justify-center h-screen w-screen bg-gray-900 text-white">
+        <p>Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-gray-600 min-w-0 min-h-0 overflow-hidden p-4 gap-3">
-      <Input
-        className="text-white placeholder:text-black"
-        placeholder="You need to Get the API key from syncthing and add it here before you can connect to a room"
-        value={syncThingApi}
-        onChange={(e) => setSyncThingApi(e.target.value)}
-      />
-      <Button
-        onClick={() => {
-          navigate('/connectRoom');
-        }}
-        disabled={syncThingApi === '' || error !== null}
-        variant="outline"
-        className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
-      >
-        Connect to Room
-      </Button>
-      <Button
-        onClick={() => {
-          navigate('/createRoom');
-        }}
-        disabled={syncThingApi === '' || error !== null}
-        variant="outline"
-        className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
-      >
-        Create a Room (Host)
-      </Button>
-      <Button
-        onClick={async () => {
-          const host = 'syncplay.pl:8996';
-          const serverPass = 'asdasdasd';
-          const username = 'Civ';
-          const room = 'TestRoom';
-          const playerPath = '/usr/bin/mpv';
-          const videoPath = '/home/baraa/Downloads/is.mp4';
-          const enableGui = false;
+    <div className="flex flex-col h-screen w-screen bg-gray-900 text-white p-8 gap-4 overflow-auto">
+      <div className="max-w-2xl mx-auto w-full space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">VideoThync</h1>
+          <Button
+            onClick={() => navigate('/settings')}
+            variant="outline"
+            className="flex items-center gap-2 bg-gray-800 border-gray-700 hover:bg-gray-700 text-white"
+          >
+            <SettingsIcon className="w-4 h-4" /> Settings
+          </Button>
+        </div>
 
-          const result = await window.electronAPI.startSyncplay(
-            host,
-            serverPass,
-            username,
-            room,
-            playerPath,
-            videoPath,
-            enableGui,
-          );
-          console.log(result);
-        }}
-      >
-        Syncplay Test
-      </Button>
+        <div className="bg-gray-800/80 p-6 rounded-xl border border-gray-700 shadow-xl space-y-4">
+          <label className="block text-sm font-medium text-gray-300">
+            Syncthing API Key
+          </label>
+          <Input
+            className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500"
+            placeholder="Get API Key from Syncthing Web GUI (Actions -> Settings -> API Key)"
+            value={syncThingApi}
+            onChange={(e) => setSyncThingApi(e.target.value)}
+          />
 
-      {error && (
-        <p className="text-red-500">
-          Could not get your device id from syncthing, either syncthing is not
-          running/installed or the syncthing instance is not reachable at
-          localhost:8384 or you have entered wrong API key. 8384:{error}
-        </p>
-      )}
-      {deviceID && (
-        <p className="text-white">
-          Syncthing is reachable and Your Syncthing Device ID: {deviceID}
-        </p>
-      )}
-      {/* <Button
-        onClick={() => {
-        }}
-        className="bg-green-500 hover:bg-green-600 hover:text-white text-white border border-green-700 px-4 py-2 rounded "
-      >
-        Testing functions button
-      </Button> */}
+          {error && (
+            <p className="text-red-400 text-sm">
+              Could not reach Syncthing at localhost:8384. Make sure Syncthing is running and API key is correct. ({error})
+            </p>
+          )}
+
+          {deviceID && (
+            <p className="text-green-400 text-sm font-mono truncate">
+              ✓ Connected to Syncthing. Device ID: {deviceID}
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <Button
+              onClick={() => navigate('/createRoom')}
+              disabled={syncThingApi === '' || error !== null}
+              className="bg-green-600 hover:bg-green-700 text-white py-3 font-semibold"
+              size="lg"
+            >
+              Create Room (Host)
+            </Button>
+            <Button
+              onClick={() => navigate('/connectRoom')}
+              disabled={syncThingApi === '' || error !== null}
+              className="bg-blue-600 hover:bg-blue-700 text-white py-3 font-semibold"
+              size="lg"
+            >
+              Connect to Room
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -157,7 +140,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function checkApiKey() {
       try {
-        const storedKey = await loadSyncthingApiKey();
+        const storedKey = await getSyncthingApiKey();
         if (!storedKey || storedKey === '') {
           navigate('/');
         } else {
@@ -175,41 +158,45 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isChecking) {
     return (
-      <div className="flex items-center justify-center h-screen w-screen bg-gray-600">
-        <p className="text-white">Checking authorization...</p>
+      <div className="flex items-center justify-center h-screen w-screen bg-gray-900 text-white">
+        <p>Checking authorization...</p>
       </div>
     );
   }
 
-  return isAuthorized ? children : null;
+  return isAuthorized ? <>{children}</> : null;
 }
 
 export default function App() {
   return (
-    <YjsProvider>
-      <DebugYjs />
-      <Router>
-        <Routes>
-          <Route path="/" element={<Hello />} />
-          <Route
-            path="/createRoom"
-            element={
-              <ProtectedRoute>
-                <CreateRoom />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/connectRoom"
-            element={
-              <ProtectedRoute>
-                <ConnectToRoom />
-              </ProtectedRoute>
-            }
-
-          />
-        </Routes>
-      </Router>
-    </YjsProvider>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Hello />} />
+        <Route
+          path="/createRoom"
+          element={
+            <ProtectedRoute>
+              <CreateRoom />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/connectRoom"
+          element={
+            <ProtectedRoute>
+              <ConnectToRoom />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
   );
 }

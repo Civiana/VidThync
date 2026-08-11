@@ -12,20 +12,16 @@ import path from 'path';
 import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+const StoreModule = require('electron-store');
+const Store = typeof StoreModule === 'function' ? StoreModule : (StoreModule.default || StoreModule);
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 import { SyncplayManager } from "src/syncplay/SyncplayManager";
 
 const syncplay = new SyncplayManager();
+const store = new Store();
 
 require('dotenv').config();
-// main.js (Electron entry point)
-// import 'src/signalingServer/server.js'; // This starts the server
-const {
-  startSignalingServer,
-  stopSignalingServer,
-} = require('src/signalingServer/serverStarter.js');
-// ...rest of your Electron app setup (BrowserWindow, etc.)
 
 class AppUpdater {
   constructor() {
@@ -62,6 +58,34 @@ ipcMain.handle('dialog:selectFolder', async () => {
 
   if (result.canceled) return null;
   return result.filePaths[0];
+});
+
+ipcMain.handle('dialog:selectFile', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+  });
+
+  if (result.canceled) return null;
+  return result.filePaths[0];
+});
+
+// electron-store IPC handlers
+ipcMain.handle('store:get', (_event, key: string) => {
+  return store.get(key);
+});
+
+ipcMain.handle('store:set', (_event, key: string, value: any) => {
+  store.set(key, value);
+  return true;
+});
+
+ipcMain.handle('store:delete', (_event, key: string) => {
+  store.delete(key);
+  return true;
+});
+
+ipcMain.handle('store:getAll', () => {
+  return store.store;
 });
 
 const installExtensions = async () => {
@@ -131,34 +155,13 @@ const createWindow = async () => {
     return { action: 'deny' };
   });
 
-  // Remove this if your app does not use auto updates
-  // eslint-disable-next-line
   new AppUpdater();
 };
 
-/**
- * Add event listeners...
- */
-
 app.on('window-all-closed', () => {
-  stopSignalingServer();
-  // Respect the OSX convention of having the application in memory even
-  // after all windows have been closed
   if (process.platform !== 'darwin') {
     app.quit();
   }
-});
-
-app.on('will-quit', () => {
-  stopSignalingServer();
-});
-
-ipcMain.on('start-signaling-server', (event, port: string) => {
-  startSignalingServer(port);
-});
-
-ipcMain.on('stop-signaling-server', () => {
-  stopSignalingServer();
 });
 
 // Handle Syncthing API requests from renderer
@@ -179,27 +182,27 @@ ipcMain.handle(
     }
   },
 );
+
 app
   .whenReady()
   .then(() => {
     createWindow();
     app.on('activate', () => {
-      // On macOS it's common to re-create a window in the app when the
-      // dock icon is clicked and there are no other windows open.
       if (mainWindow === null) createWindow();
     });
   })
   .catch(console.log);
 
-ipcMain.handle("syncplay:start", (_event,host: string, serverPass: string, username: string, room: string, playerPath: string, videoPath: string, enableGui: boolean ) => {
+ipcMain.handle("syncplay:start", (_event, host: string, serverPass: string, username: string, room: string, playerPath: string, videoPath: string, enableGui: boolean ) => {
   console.log(`Starting Syncplay with host: ${host}, serverPass: ${serverPass}, username: ${username}, room: ${room}, playerPath: ${playerPath}, videoPath: ${videoPath}`, enableGui);
-    return syncplay.start(
-        host,
-        serverPass,
-        username,
-        room,
-        playerPath,
-        videoPath,
-        enableGui
-    );
+  return syncplay.start(
+    host,
+    serverPass,
+    username,
+    room,
+    playerPath,
+    videoPath,
+    enableGui
+  );
 });
+

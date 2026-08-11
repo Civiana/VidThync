@@ -1,12 +1,12 @@
-import { loadSyncthingApiKey } from 'src/utils/apiKeyStorage';
+import { getSyncthingApiKey } from 'src/utils/state';
 
 const URL = 'http://localhost:8384/rest';
 
 let apiKey: string | null = null;
 
-// Initialize API key from IndexedDB
+// Initialize API key from electron-store state
 async function initApiKey() {
-  apiKey = await loadSyncthingApiKey();
+  apiKey = await getSyncthingApiKey();
 
   return apiKey;
 }
@@ -515,6 +515,8 @@ export async function subscribeToSyncthingEvents(
         if (
           event.type === 'ItemFinished' ||
           event.type === 'StateChanged' ||
+          event.type === 'FolderSummary' ||
+          event.type === 'FolderCompletion' ||
           event.type === 'PendingDevicesChanged' ||
           event.type === 'DeviceDiscovered' ||
           event.type === 'DeviceConnected' ||
@@ -530,4 +532,44 @@ export async function subscribeToSyncthingEvents(
     }
   }
 }
+
+export async function fetchFolderStatus(folderId: string) {
+  try {
+    const requestGET = await getRequestGET();
+    const res = await fetch(`${URL}/db/status?folder=${encodeURIComponent(folderId)}`, requestGET);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error('[fetchFolderStatus] Error:', err);
+    return null;
+  }
+}
+
+export async function fetchDeviceConnections() {
+  try {
+    const requestGET = await getRequestGET();
+    const res = await fetch(`${URL}/system/connections`, requestGET);
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data.connections || {};
+  } catch (err) {
+    console.error('[fetchDeviceConnections] Error:', err);
+    return {};
+  }
+}
+
+export async function fetchFolderDevices(folderId: string) {
+  try {
+    const requestGET = await getRequestGET();
+    const res = await fetch(`${URL}/config/folders`, requestGET);
+    if (!res.ok) return [];
+    const folders = await res.json();
+    const folder = folders.find((f: any) => f.id === folderId || f.label === folderId);
+    return folder ? folder.devices || [] : [];
+  } catch (err) {
+    console.error('[fetchFolderDevices] Error:', err);
+    return [];
+  }
+}
+
 

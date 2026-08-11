@@ -43,7 +43,6 @@ export class SyncplayManager {
                 stdio: ["pipe", "pipe", "pipe"],
             }
         );
-
         return true;
     }
 }
